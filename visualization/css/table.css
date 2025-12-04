@@ -1,0 +1,176 @@
+/* Data table styles */
+
+#data-table-container {
+    background: white;
+    border-top: 1px solid #ddd;
+    max-height: 400px;
+    overflow: hidden;
+}
+
+#data-table {
+    width: 100%;
+    height: 100%;
+}
+
+/* Plotly table overrides */
+.js-plotly-plot .plotly .table {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+}
+
+.js-plotly-plot .plotly .table th {
+    background: #2c3e50;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.js-plotly-plot .plotly .table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #eee;
+}
+
+.js-plotly-plot .plotly .table tr:hover {
+    background: #f8f9fa;
+}
+
+/* Table filters */
+.table-filters {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #ddd;
+}
+
+.table-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.table-filter-group label {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.table-filter-group input,
+.table-filter-group select {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+/* Custom table styling */
+.data-table-custom {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table-custom thead {
+    background: #2c3e50;
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.data-table-custom th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.data-table-custom th:hover {
+    background: #34495e;
+}
+
+.data-table-custom th.sortable::after {
+    content: ' ⇅';
+    opacity: 0.3;
+}
+
+.data-table-custom th.sorted-asc::after {
+    content: ' ↑';
+    opacity: 1;
+}
+
+.data-table-custom th.sorted-desc::after {
+    content: ' ↓';
+    opacity: 1;
+}
+
+.data-table-custom td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #eee;
+}
+
+.data-table-custom tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.data-table-custom tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.data-table-custom tbody tr:nth-child(even):hover {
+    background: #f0f0f0;
+}
+
+/* Numeric columns */
+.table-col-numeric {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Zone colors in table */
+.zone-etela-suomi {
+    color: #2E86AB;
+    font-weight: 600;
+}
+
+.zone-keski-suomi {
+    color: #A23B72;
+    font-weight: 600;
+}
+
+.zone-pohjois-suomi {
+    color: #F18F01;
+    font-weight: 600;
+}
+
+.zone-lappi {
+    color: #C73E1D;
+    font-weight: 600;
+}
+
+/* Empty state */
+.table-empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #999;
+    font-style: italic;
+}
+
+/* Scrollbar styling */
+#data-table-container::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+#data-table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+#data-table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 5px;
+}
+
+#data-table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
