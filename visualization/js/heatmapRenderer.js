@@ -1,6 +1,6 @@
 /**
  * heatmapRenderer.js
- * Renders weather data on map using colored circles (Mode A) or interpolated grid (Mode B)
+ * Renders weather data on D3 map using colored circles (Mode A) or interpolated grid (Mode B)
  */
 
 const HeatmapRenderer = {
@@ -17,7 +17,7 @@ const HeatmapRenderer = {
    * @returns {void}
    */
   renderStationMode(data, metric, colorScale) {
-    if (!MapManager.map) {
+    if (!MapManager.svg) {
       console.error('Map not initialized');
       return;
     }
@@ -66,22 +66,8 @@ const HeatmapRenderer = {
       return 4 + normValue * 8; // 4-12 pixels
     };
 
-    // Add markers to map
-    MapManager.addStationMarkers(stations, colorFunction, radiusFunction);
-
-    // Create popups for markers
-    MapManager.markers.forEach((marker, index) => {
-      if (stations[index]) {
-        const station = stations[index];
-        const popupContent = `
-          <div class="station-popup">
-            <strong>${station.name}</strong><br>
-            ${metric}: ${station.value.toFixed(2)}
-          </div>
-        `;
-        marker.bindPopup(popupContent);
-      }
-    });
+    // Add markers to map with tooltip info
+    MapManager.addStationMarkersWithTooltip(stations, colorFunction, radiusFunction, metric);
   },
 
   /**
@@ -94,7 +80,7 @@ const HeatmapRenderer = {
    * @returns {void}
    */
   renderInterpolatedMode(data, metric, colorScale) {
-    if (!MapManager.map) {
+    if (!MapManager.svg) {
       console.error('Map not initialized');
       return;
     }
@@ -115,7 +101,6 @@ const HeatmapRenderer = {
     MapManager.clearMarkers();
 
     const stations = [];
-    const values = [];
 
     // Prepare stations and values
     Object.keys(data).forEach(stationId => {
@@ -134,7 +119,6 @@ const HeatmapRenderer = {
         lon: station.lon,
         value: value
       });
-      values.push(value);
     });
 
     if (stations.length === 0) {
@@ -142,33 +126,43 @@ const HeatmapRenderer = {
       return;
     }
 
-    // Create large, semi-transparent circles that overlap
-    // This creates a smooth gradient effect
+    // Create interpolation circles for smooth heatmap effect
+    const circles = [];
+
+    // Multiple passes for smooth blending
+    [80, 56, 32].forEach((radius, passIndex) => {
+      const opacity = 0.15 + passIndex * 0.05;
+
+      stations.forEach(station => {
+        circles.push({
+          lat: station.lat,
+          lon: station.lon,
+          radius: radius,
+          color: colorScale.getColor(station.value),
+          opacity: opacity
+        });
+      });
+    });
+
+    MapManager.addInterpolationCircles(circles);
+
+    // Add small reference markers on top
     stations.forEach(station => {
-      const color = colorScale.getColor(station.value);
-      const normalized = colorScale.normalize(station.value);
-
-      // Larger radius for smooth overlap
-      const radius = 80000; // 80km radius in meters
-
-      // Create circle with gradient effect
-      const circle = L.circle([station.lat, station.lon], {
-        radius: radius,
-        fillColor: color,
-        fillOpacity: 0.3, // Semi-transparent for blending
-        color: color,
-        opacity: 0.2,
-        weight: 1
+      const marker = MapManager.addStationMarker(station.lat, station.lon, {
+        radius: 3,
+        fillColor: colorScale.getColor(station.value),
+        fillOpacity: 0.9,
+        strokeColor: '#fff',
+        strokeWidth: 1
       });
 
-      circle.addTo(MapManager.map);
-      MapManager.markers.push(circle);
-
-      // Add tooltip
-      circle.bindTooltip(`
-        <strong>${station.name}</strong><br>
-        ${metric}: ${station.value.toFixed(1)}
-      `, { permanent: false, direction: 'top' });
+      if (marker) {
+        marker.datum({
+          ...station,
+          metric: metric,
+          formattedValue: `${metric}: ${station.value.toFixed(1)}`
+        });
+      }
     });
 
     console.log(`Rendered ${stations.length} interpolated circles`);
@@ -229,74 +223,46 @@ const HeatmapRenderer = {
     const avgSnow = snowStations.reduce((sum, s) => sum + s.value, 0) / snowStations.length;
     const snowColor = colorScale.getColor(avgSnow);
 
-    // Strategy: Create VERY large, VERY transparent overlapping circles
-    // This makes them blend into one continuous region
-    const bufferRadius = 90000; // 90km - larger for better coverage
+    // Create interpolation circles for snow coverage
+    const circles = [];
 
-    // First pass: Create the base snow coverage with very transparent circles
-    snowStations.forEach(station => {
-      const circle = L.circle([station.lat, station.lon], {
-        radius: bufferRadius,
-        fillColor: snowColor,
-        fillOpacity: 0.15, // Very transparent - will build up with overlaps
-        color: 'transparent', // No border
-        weight: 0,
-        interactive: false // Don't block clicks
+    // Multiple passes for smooth blending
+    [90, 63, 36].forEach((radius, passIndex) => {
+      const opacity = 0.15 + passIndex * 0.1;
+
+      snowStations.forEach(station => {
+        circles.push({
+          lat: station.lat,
+          lon: station.lon,
+          radius: radius,
+          color: snowColor,
+          opacity: opacity
+        });
       });
-
-      circle.addTo(MapManager.map);
-      MapManager.markers.push(circle);
     });
 
-    // Second pass: Add slightly smaller, slightly more opaque circles for density
-    snowStations.forEach(station => {
-      const circle = L.circle([station.lat, station.lon], {
-        radius: bufferRadius * 0.7,
-        fillColor: snowColor,
-        fillOpacity: 0.2,
-        color: 'transparent',
-        weight: 0,
-        interactive: false
-      });
-
-      circle.addTo(MapManager.map);
-      MapManager.markers.push(circle);
-    });
-
-    // Third pass: Core areas get more color
-    snowStations.forEach(station => {
-      const circle = L.circle([station.lat, station.lon], {
-        radius: bufferRadius * 0.4,
-        fillColor: snowColor,
-        fillOpacity: 0.25,
-        color: 'transparent',
-        weight: 0,
-        interactive: false
-      });
-
-      circle.addTo(MapManager.map);
-      MapManager.markers.push(circle);
-    });
+    MapManager.addInterpolationCircles(circles);
 
     // Add small markers at station locations for reference
     allStations.forEach(station => {
       const hasSnow = station.value >= 0.5;
-      const marker = L.circleMarker([station.lat, station.lon], {
+      const marker = MapManager.addStationMarker(station.lat, station.lon, {
         radius: hasSnow ? 3 : 2,
         fillColor: hasSnow ? '#ffffff' : '#666666',
         fillOpacity: hasSnow ? 0.8 : 0.3,
-        color: hasSnow ? '#ffffff' : '#999999',
-        weight: 1,
+        strokeColor: hasSnow ? '#ffffff' : '#999999',
+        strokeWidth: 1,
         opacity: hasSnow ? 1 : 0.5
       });
 
-      marker.addTo(MapManager.map);
-      MapManager.markers.push(marker);
-
-      marker.bindTooltip(`
-        <strong>${station.name}</strong><br>
-        ${hasSnow ? `Snow: ${station.value.toFixed(1)} cm` : 'No snow'}
-      `, { permanent: false, direction: 'top' });
+      if (marker) {
+        marker.datum({
+          ...station,
+          metric: metric,
+          hasSnow: hasSnow,
+          formattedValue: hasSnow ? `Snow: ${station.value.toFixed(1)} cm` : 'No snow'
+        });
+      }
     });
 
     console.log(`Rendered unified snow coverage area`);

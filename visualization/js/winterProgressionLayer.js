@@ -1,26 +1,20 @@
 /**
  * winterProgressionLayer.js
- * Display winter progression visualization (stubbed for now)
+ * Display winter progression visualization using D3
  * Shows snow cover, frost progression, and other winter indicators
  */
 
 const WinterProgressionLayer = {
   isEnabled: false,
   currentData: null,
-  layer: null,
+  elements: [],
 
   /**
    * Initialize winter progression layer
    * @param {Object} options - Configuration options
    */
   initialize(options = {}) {
-    // TODO: Set up winter-specific visualization
     console.log('Winter progression layer initialized');
-    console.log('Features to implement:');
-    console.log('  - Snow cover visualization');
-    console.log('  - Frost date tracking');
-    console.log('  - Winter severity index');
-    console.log('  - Ice cover on lakes');
   },
 
   /**
@@ -30,9 +24,7 @@ const WinterProgressionLayer = {
   enable(winterData) {
     this.isEnabled = true;
     this.currentData = winterData;
-
-    console.log('Rendering winter progression...');
-    // TODO: Implement actual rendering
+    this.render();
   },
 
   /**
@@ -47,22 +39,28 @@ const WinterProgressionLayer = {
    * Render winter progression on map
    */
   render() {
-    if (!this.isEnabled || !this.currentData) {
+    if (!this.isEnabled || !this.currentData || !MapManager.svg) {
       return;
     }
 
-    console.log('Winter progression render - To be implemented');
-    // TODO: Create visualization layer
+    this.clear();
+    console.log('Rendering winter progression...');
+
+    // TODO: Implement actual winter progression visualization
+    // This could show:
+    // - Snow line moving south
+    // - Frost dates
+    // - Winter severity indicators
   },
 
   /**
    * Clear winter progression visualization
    */
   clear() {
-    if (this.layer && MapManager.map) {
-      MapManager.removeLayer(this.layer);
-      this.layer = null;
+    if (MapManager.g) {
+      MapManager.g.selectAll('.winter-element').remove();
     }
+    this.elements = [];
   },
 
   /**
@@ -82,7 +80,6 @@ const WinterProgressionLayer = {
    * @returns {number} Snow cover percentage or depth
    */
   calculateSnowCover(stationData) {
-    // Stub: Would calculate based on precipitation and temperature
     return 0;
   },
 
@@ -93,7 +90,6 @@ const WinterProgressionLayer = {
    */
   isWinterSeason(date) {
     const month = date.getMonth();
-    // Winter: November (10), December (11), January (0), February (1), March (2)
     return month >= 10 || month <= 2;
   },
 
@@ -106,7 +102,6 @@ const WinterProgressionLayer = {
       return null;
     }
 
-    // TODO: Calculate winter-specific statistics
     return {
       averageSnowCover: 0,
       frozenLakes: 0,

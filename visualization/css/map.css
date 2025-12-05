@@ -4,18 +4,14 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
-/* Station markers */
+/* Station markers (SVG circles) */
 .station-marker {
-    border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.8);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    transition: all 0.2s;
+    cursor: pointer;
 }
 
 .station-marker:hover {
-    transform: scale(1.3);
-    z-index: 1000 !important;
-    border-width: 3px;
+    stroke-width: 2;
+    stroke: #fff;
 }
 
 /* Station popups */

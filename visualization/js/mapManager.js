@@ -1,15 +1,30 @@
 /**
  * mapManager.js
- * Manages Leaflet map initialization and base functionality
+ * Manages D3-based map visualization of Finland
+ * Uses fi.json GeoJSON for Finland borders
  */
 
 const MapManager = {
-  map: null,
+  svg: null,
+  projection: null,
+  path: null,
   markers: [],
-  heatmapLayer: null,
-  interpolationLayer: null,
+  finlandGeoJSON: null,
+  container: null,
+  width: 0,
+  height: 0,
+  g: null, // Main group for all map elements
+  zoom: null,
 
-  // Finland bounds
+  // Layer groups (in order: background, heatmap, border, markers)
+  layers: {
+    heatmap: null,
+    border: null,
+    markers: null,
+    anomalies: null
+  },
+
+  // Finland bounds (WGS84)
   FINLAND_BOUNDS: {
     north: 70.1,
     south: 59.5,
@@ -18,68 +33,223 @@ const MapManager = {
   },
 
   /**
-   * Initialize the map with Finland bounds
+   * Initialize the D3 map with Finland
    * @param {string} containerId - ID of the map container element
-   * @returns {L.Map} Leaflet map instance
+   * @returns {Object} D3 selection of SVG
    */
-  initializeMap(containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) {
+  async initializeMap(containerId) {
+    this.container = document.getElementById(containerId);
+    if (!this.container) {
       console.error(`Map container '${containerId}' not found`);
       return null;
     }
 
-    // Create map centered on Finland
-    const center = [
-      (this.FINLAND_BOUNDS.north + this.FINLAND_BOUNDS.south) / 2,
-      (this.FINLAND_BOUNDS.east + this.FINLAND_BOUNDS.west) / 2
-    ];
+    // Get container dimensions
+    const rect = this.container.getBoundingClientRect();
+    this.width = rect.width || 800;
+    this.height = rect.height || 600;
 
-    this.map = L.map(containerId).setView(center, 5);
+    // Create SVG
+    this.svg = d3.select(`#${containerId}`)
+      .append('svg')
+      .attr('width', '100%')
+      .attr('height', '100%')
+      .attr('viewBox', `0 0 ${this.width} ${this.height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
+      .style('background', '#e8f4f8');
 
-    // Add tile layer (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(this.map);
+    // Create main group for map elements (will be transformed by zoom)
+    this.g = this.svg.append('g').attr('class', 'map-group');
 
-    // Set max bounds to Finland area
-    const bounds = L.latLngBounds(
-      [this.FINLAND_BOUNDS.south, this.FINLAND_BOUNDS.west],
-      [this.FINLAND_BOUNDS.north, this.FINLAND_BOUNDS.east]
-    );
-    this.map.setMaxBounds(bounds.pad(0.1));
+    // Create layer groups in correct order
+    this.layers.heatmap = this.g.append('g').attr('class', 'layer-heatmap');
+    this.layers.border = this.g.append('g').attr('class', 'layer-border');
+    this.layers.markers = this.g.append('g').attr('class', 'layer-markers');
+    this.layers.anomalies = this.g.append('g').attr('class', 'layer-anomalies');
 
-    // Add controls
-    this.addControls();
+    // Set up zoom behavior
+    this.setupZoom();
 
-    return this.map;
+    // Load Finland GeoJSON and set up projection
+    await this.loadFinlandBorder();
+
+    console.log('D3 Map initialized with zoom/pan');
+    return this.svg;
   },
 
   /**
-   * Add basic controls to map
+   * Set up D3 zoom behavior
    */
-  addControls() {
-    if (!this.map) return;
+  setupZoom() {
+    this.zoom = d3.zoom()
+      .scaleExtent([0.5, 8])
+      .on('zoom', (event) => {
+        this.g.attr('transform', event.transform);
+      });
 
-    // Add zoom control in top right
-    L.control.zoom({ position: 'topright' }).addTo(this.map);
+    this.svg.call(this.zoom);
 
-    // Add scale control
-    L.control.scale({ position: 'bottomright' }).addTo(this.map);
+    // Add zoom controls
+    this.addZoomControls();
+  },
 
-    // Add layers control
-    this.layersControl = L.control.layers({}, {}, { position: 'topright' });
-    this.layersControl.addTo(this.map);
+  /**
+   * Add zoom control buttons
+   */
+  addZoomControls() {
+    const controls = d3.select(this.container)
+      .append('div')
+      .attr('class', 'map-zoom-controls')
+      .style('position', 'absolute')
+      .style('top', '10px')
+      .style('right', '10px')
+      .style('display', 'flex')
+      .style('flex-direction', 'column')
+      .style('gap', '5px')
+      .style('z-index', '100');
+
+    // Zoom in button
+    controls.append('button')
+      .attr('class', 'zoom-btn')
+      .style('width', '30px')
+      .style('height', '30px')
+      .style('font-size', '18px')
+      .style('cursor', 'pointer')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '4px')
+      .style('background', 'white')
+      .text('+')
+      .on('click', () => this.zoomIn());
+
+    // Zoom out button
+    controls.append('button')
+      .attr('class', 'zoom-btn')
+      .style('width', '30px')
+      .style('height', '30px')
+      .style('font-size', '18px')
+      .style('cursor', 'pointer')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '4px')
+      .style('background', 'white')
+      .text('−')
+      .on('click', () => this.zoomOut());
+
+    // Reset button
+    controls.append('button')
+      .attr('class', 'zoom-btn')
+      .style('width', '30px')
+      .style('height', '30px')
+      .style('font-size', '12px')
+      .style('cursor', 'pointer')
+      .style('border', '1px solid #ccc')
+      .style('border-radius', '4px')
+      .style('background', 'white')
+      .text('⌂')
+      .on('click', () => this.resetZoom());
+  },
+
+  /**
+   * Zoom in
+   */
+  zoomIn() {
+    this.svg.transition().duration(300).call(this.zoom.scaleBy, 1.5);
+  },
+
+  /**
+   * Zoom out
+   */
+  zoomOut() {
+    this.svg.transition().duration(300).call(this.zoom.scaleBy, 0.67);
+  },
+
+  /**
+   * Reset zoom to initial state
+   */
+  resetZoom() {
+    this.svg.transition().duration(300).call(this.zoom.transform, d3.zoomIdentity);
+  },
+
+  /**
+   * Load Finland border from GeoJSON and set up projection
+   */
+  async loadFinlandBorder() {
+    try {
+      const response = await fetch('fi.json');
+      if (!response.ok) {
+        throw new Error(`Failed to load Finland GeoJSON: ${response.statusText}`);
+      }
+      this.finlandGeoJSON = await response.json();
+
+      // Set up projection to fit Finland in container
+      this.setupProjection();
+
+      // Draw Finland
+      this.drawFinland();
+
+      console.log('Finland border loaded successfully');
+    } catch (error) {
+      console.error('Error loading Finland border:', error);
+    }
+  },
+
+  /**
+   * Set up D3 projection for Finland
+   */
+  setupProjection() {
+    if (!this.finlandGeoJSON) return;
+
+    // Use Mercator projection centered on Finland
+    this.projection = d3.geoMercator()
+      .fitExtent(
+        [[this.width * 0.05, this.height * 0.05], [this.width * 0.95, this.height * 0.95]],
+        this.finlandGeoJSON
+      );
+
+    // Create path generator
+    this.path = d3.geoPath().projection(this.projection);
+  },
+
+  /**
+   * Draw Finland polygon
+   */
+  drawFinland() {
+    if (!this.finlandGeoJSON || !this.path) return;
+
+    // Remove existing Finland layer
+    this.layers.border.selectAll('.finland-border').remove();
+
+    // Draw Finland border
+    this.layers.border.append('path')
+      .datum(this.finlandGeoJSON)
+      .attr('class', 'finland-border')
+      .attr('d', this.path)
+      .attr('fill', 'none')
+      .attr('stroke', '#333')
+      .attr('stroke-width', 2)
+      .attr('pointer-events', 'none');
+  },
+
+  /**
+   * Convert lat/lon to pixel coordinates
+   * @param {number} lat - Latitude
+   * @param {number} lon - Longitude
+   * @returns {Array} [x, y] pixel coordinates
+   */
+  latLonToPixel(lat, lon) {
+    if (!this.projection) return [0, 0];
+    return this.projection([lon, lat]);
   },
 
   /**
    * Clear all markers from the map
    */
   clearMarkers() {
-    this.markers.forEach(marker => {
-      this.map.removeLayer(marker);
-    });
+    if (this.layers.markers) {
+      this.layers.markers.selectAll('*').remove();
+    }
+    if (this.layers.heatmap) {
+      this.layers.heatmap.selectAll('*').remove();
+    }
     this.markers = [];
   },
 
@@ -88,26 +258,38 @@ const MapManager = {
    * @param {number} lat - Latitude
    * @param {number} lon - Longitude
    * @param {Object} options - Marker options
-   * @returns {L.CircleMarker} Leaflet circle marker
+   * @returns {Object} D3 selection of marker
    */
   addStationMarker(lat, lon, options = {}) {
-    if (!this.map) return null;
+    if (!this.layers.markers || !this.projection) return null;
+
+    const [x, y] = this.latLonToPixel(lat, lon);
 
     const defaultOptions = {
       radius: 6,
       fillColor: '#3388ff',
-      color: '#000',
-      weight: 1,
+      strokeColor: '#000',
+      strokeWidth: 1,
       opacity: 0.8,
-      fillOpacity: 0.7,
-      title: 'Weather Station'
+      fillOpacity: 0.7
     };
 
-    const markerOptions = { ...defaultOptions, ...options };
-    const marker = L.circleMarker([lat, lon], markerOptions);
-    marker.addTo(this.map);
-    this.markers.push(marker);
+    const opts = { ...defaultOptions, ...options };
 
+    const marker = this.layers.markers.append('circle')
+      .attr('class', 'station-marker')
+      .attr('cx', x)
+      .attr('cy', y)
+      .attr('r', opts.radius)
+      .attr('fill', opts.fillColor)
+      .attr('fill-opacity', opts.fillOpacity)
+      .attr('stroke', opts.strokeColor)
+      .attr('stroke-width', opts.strokeWidth)
+      .attr('opacity', opts.opacity)
+      .style('cursor', 'pointer')
+      .style('pointer-events', 'all');
+
+    this.markers.push(marker);
     return marker;
   },
 
@@ -126,101 +308,177 @@ const MapManager = {
 
       const marker = this.addStationMarker(station.lat, station.lon, {
         radius: radius,
-        fillColor: color,
-        title: station.name || station.station_name || station.id
+        fillColor: color
       });
 
-      // Store reference to station data
-      marker.stationData = station;
+      if (marker) {
+        marker.datum(station);
+        const name = station.name || station.station_name || station.id || 'Station';
+        marker.append('title').text(name);
+      }
     });
   },
 
   /**
-   * Add or update heatmap layer
-   * @param {L.Layer} layer - Leaflet layer (Heatmap.js, etc.)
-   * @param {string} name - Name for layers control
+   * Add station markers with metric tooltip
+   * @param {Array} stations - Array of station objects
+   * @param {Function} colorFunction - Function to determine circle color
+   * @param {Function} radiusFunction - Function to determine circle radius
+   * @param {string} metric - Current metric name
    */
-  addHeatmapLayer(layer, name = 'Heatmap') {
-    if (this.heatmapLayer) {
-      this.map.removeLayer(this.heatmapLayer);
-    }
+  addStationMarkersWithTooltip(stations, colorFunction, radiusFunction, metric) {
+    this.clearMarkers();
 
-    this.heatmapLayer = layer;
-    this.map.addLayer(layer);
+    stations.forEach(station => {
+      const color = colorFunction ? colorFunction(station) : '#3388ff';
+      const radius = radiusFunction ? radiusFunction(station) : 6;
 
-    // Add to layers control if it exists
-    if (this.layersControl) {
-      this.layersControl.addOverlay(layer, name);
-    }
+      const marker = this.addStationMarker(station.lat, station.lon, {
+        radius: radius,
+        fillColor: color
+      });
+
+      if (marker) {
+        marker.datum(station);
+        const name = station.name || station.station_name || station.id || 'Station';
+        const value = station.value !== undefined ? station.value.toFixed(1) : '-';
+        marker.append('title').text(`${name}\n${metric}: ${value}`);
+      }
+    });
   },
 
   /**
-   * Add or update interpolation overlay layer
-   * @param {L.Layer} layer - Leaflet layer
-   * @param {string} name - Name for layers control
+   * Show tooltip
    */
-  addInterpolationLayer(layer, name = 'Interpolated') {
-    if (this.interpolationLayer) {
-      this.map.removeLayer(this.interpolationLayer);
+  showTooltip(event, data) {
+    let tooltip = d3.select('#map-tooltip');
+    if (tooltip.empty()) {
+      tooltip = d3.select('body').append('div')
+        .attr('id', 'map-tooltip')
+        .attr('class', 'map-tooltip')
+        .style('position', 'absolute')
+        .style('background', 'rgba(0,0,0,0.8)')
+        .style('color', 'white')
+        .style('padding', '8px 12px')
+        .style('border-radius', '4px')
+        .style('font-size', '12px')
+        .style('pointer-events', 'none')
+        .style('z-index', '1000');
     }
 
-    this.interpolationLayer = layer;
-    this.map.addLayer(layer);
-
-    if (this.layersControl) {
-      this.layersControl.addOverlay(layer, name);
-    }
+    const name = data.name || data.station_name || data.id;
+    tooltip
+      .html(`<strong>${name}</strong>`)
+      .style('left', (event.pageX + 10) + 'px')
+      .style('top', (event.pageY - 10) + 'px')
+      .style('display', 'block');
   },
 
   /**
-   * Remove a layer from the map
-   * @param {L.Layer} layer - Layer to remove
+   * Hide tooltip
+   */
+  hideTooltip() {
+    d3.select('#map-tooltip').style('display', 'none');
+  },
+
+  /**
+   * Add interpolation circles (for smooth heatmap effect)
+   * @param {Array} circles - Array of {lat, lon, radius, color, opacity}
+   */
+  addInterpolationCircles(circles) {
+    if (!this.layers.heatmap || !this.projection) return;
+
+    circles.forEach(circle => {
+      const [x, y] = this.latLonToPixel(circle.lat, circle.lon);
+
+      // Convert km radius to pixels (approximate)
+      const scale = this.getScaleFactor();
+      const pixelRadius = circle.radius * scale;
+
+      this.layers.heatmap.append('circle')
+        .attr('class', 'interpolation-circle')
+        .attr('cx', x)
+        .attr('cy', y)
+        .attr('r', pixelRadius)
+        .attr('fill', circle.color)
+        .attr('fill-opacity', circle.opacity || 0.3)
+        .attr('stroke', 'none');
+    });
+  },
+
+  /**
+   * Get approximate scale factor (pixels per km)
+   */
+  getScaleFactor() {
+    if (!this.projection) return 1;
+
+    // Calculate pixels per degree at Finland's latitude
+    const center = [25, 64]; // Approximate Finland center
+    const p1 = this.projection(center);
+    const p2 = this.projection([center[0] + 1, center[1]]);
+
+    // 1 degree longitude at 64°N ≈ 49 km
+    const pixelsPerDegree = Math.abs(p2[0] - p1[0]);
+    return pixelsPerDegree / 49;
+  },
+
+  /**
+   * Get current map bounds in lat/lon
+   * @returns {Object} {north, south, east, west}
+   */
+  getBounds() {
+    return this.FINLAND_BOUNDS;
+  },
+
+  /**
+   * Resize handler
+   */
+  resize() {
+    if (!this.container) return;
+
+    const rect = this.container.getBoundingClientRect();
+    this.width = rect.width || 800;
+    this.height = rect.height || 600;
+
+    if (this.svg) {
+      this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`);
+    }
+
+    // Recalculate projection and redraw
+    this.setupProjection();
+    this.drawFinland();
+  },
+
+  // Compatibility methods for existing code
+
+  /**
+   * Get map reference (for compatibility)
+   */
+  get map() {
+    return this.svg;
+  },
+
+  /**
+   * Remove a layer (for compatibility)
    */
   removeLayer(layer) {
-    if (this.map && layer) {
-      this.map.removeLayer(layer);
+    if (layer && layer.remove) {
+      layer.remove();
     }
   },
 
   /**
-   * Set map view to specific bounds
-   * @param {Array} bounds - [[south, west], [north, east]]
+   * Add layer to layers control (stub for compatibility)
    */
-  fitToBounds(bounds) {
-    if (this.map && bounds && bounds.length === 2) {
-      const latLngBounds = L.latLngBounds(bounds);
-      this.map.fitBounds(latLngBounds);
-    }
+  addHeatmapLayer(layer, name) {
+    console.log('Heatmap layer added:', name);
   },
 
   /**
-   * Get current map zoom level
-   * @returns {number} Zoom level
+   * Add interpolation layer (stub for compatibility)
    */
-  getZoom() {
-    return this.map ? this.map.getZoom() : null;
-  },
-
-  /**
-   * Get current map center
-   * @returns {Object} {lat, lon}
-   */
-  getCenter() {
-    if (!this.map) return null;
-    const center = this.map.getCenter();
-    return { lat: center.lat, lon: center.lng };
-  },
-
-  /**
-   * Set map view
-   * @param {number} lat - Latitude
-   * @param {number} lon - Longitude
-   * @param {number} zoom - Zoom level
-   */
-  setView(lat, lon, zoom = 5) {
-    if (this.map) {
-      this.map.setView([lat, lon], zoom);
-    }
+  addInterpolationLayer(layer, name) {
+    console.log('Interpolation layer added:', name);
   }
 };
 

@@ -1,13 +1,12 @@
 /**
  * anomalyOverlay.js
- * Display weather anomalies on map and timeline
+ * Display weather anomalies on D3 map and timeline
  */
 
 const AnomalyOverlay = {
   isEnabled: false,
   currentDate: null,
-  anomalyMarkers: [],
-  anomalyLayers: [],
+  anomalyElements: [],
 
   /**
    * Enable anomaly overlay visualization
@@ -42,7 +41,7 @@ const AnomalyOverlay = {
    * Render anomalies on map
    */
   render() {
-    if (!this.isEnabled || !this.currentDate || !MapManager.map) {
+    if (!this.isEnabled || !this.currentDate || !MapManager.svg) {
       return;
     }
 
@@ -92,74 +91,73 @@ const AnomalyOverlay = {
       }
 
       const center = zoneCenters[anomaly.zone];
+      const [x, y] = MapManager.latLonToPixel(center.lat, center.lon);
 
       const color = anomalyColors[anomaly.type] || '#999';
       const icon = anomalyIcons[anomaly.type] || '⚠️';
 
-      // Create semi-transparent zone overlay
-      const circle = L.circle([center.lat, center.lon], {
-        radius: 100000, // 100km radius
-        fillColor: color,
-        fillOpacity: 0.25,
-        color: color,
-        opacity: 0.6,
-        weight: 3,
-        dashArray: '10, 5'
-      });
+      // Create semi-transparent zone overlay circle
+      const scale = MapManager.getScaleFactor();
+      const radius = 100 * scale; // 100km radius
 
-      circle.addTo(MapManager.map);
-      this.anomalyLayers.push(circle);
+      const circle = MapManager.g.append('circle')
+        .attr('class', 'anomaly-zone')
+        .attr('cx', x)
+        .attr('cy', y)
+        .attr('r', radius)
+        .attr('fill', color)
+        .attr('fill-opacity', 0.25)
+        .attr('stroke', color)
+        .attr('stroke-opacity', 0.6)
+        .attr('stroke-width', 3)
+        .attr('stroke-dasharray', '10, 5');
 
-      // Create icon marker
-      const divIcon = L.divIcon({
-        html: `<div style="font-size: 32px; text-shadow: 0 0 3px white;">${icon}</div>`,
-        className: 'anomaly-icon',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
+      this.anomalyElements.push(circle);
 
-      const marker = L.marker([center.lat, center.lon], { icon: divIcon });
+      // Create icon text element
+      const iconText = MapManager.g.append('text')
+        .attr('class', 'anomaly-icon')
+        .attr('x', x)
+        .attr('y', y)
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('font-size', '24px')
+        .style('text-shadow', '0 0 3px white')
+        .text(icon);
 
-      // Tooltip with anomaly details
-      let tooltipText = `<strong>${anomaly.type}</strong><br>`;
-      tooltipText += `Zone: ${anomaly.zone}<br>`;
-      tooltipText += `Date: ${anomaly.start_date}<br>`;
+      this.anomalyElements.push(iconText);
+
+      // Create tooltip on hover
+      let tooltipText = `${anomaly.type}\n`;
+      tooltipText += `Zone: ${anomaly.zone}\n`;
+      tooltipText += `Date: ${anomaly.start_date}`;
       if (anomaly.duration_days > 1) {
-        tooltipText += `Duration: ${anomaly.duration_days} days<br>`;
+        tooltipText += `\nDuration: ${anomaly.duration_days} days`;
       }
       if (anomaly.min_temperature !== null) {
-        tooltipText += `Min temp: ${anomaly.min_temperature}°C<br>`;
+        tooltipText += `\nMin temp: ${anomaly.min_temperature}°C`;
       }
       if (anomaly.max_temperature !== null) {
-        tooltipText += `Max temp: ${anomaly.max_temperature}°C`;
+        tooltipText += `\nMax temp: ${anomaly.max_temperature}°C`;
       }
 
-      marker.bindTooltip(tooltipText, { permanent: false, direction: 'top' });
-      marker.addTo(MapManager.map);
-
-      this.anomalyMarkers.push(marker);
+      // Add title for tooltip
+      iconText.append('title').text(tooltipText);
+      circle.append('title').text(tooltipText);
     });
 
-    console.log(`Rendered ${this.anomalyMarkers.length} anomaly markers`);
+    console.log(`Rendered ${this.anomalyElements.length / 2} anomaly markers`);
   },
 
   /**
    * Clear all anomaly markers
    */
   clear() {
-    this.anomalyMarkers.forEach(marker => {
-      if (MapManager.map) {
-        MapManager.map.removeLayer(marker);
-      }
-    });
-    this.anomalyMarkers = [];
-
-    this.anomalyLayers.forEach(layer => {
-      if (MapManager.map) {
-        MapManager.map.removeLayer(layer);
-      }
-    });
-    this.anomalyLayers = [];
+    if (MapManager.g) {
+      MapManager.g.selectAll('.anomaly-zone').remove();
+      MapManager.g.selectAll('.anomaly-icon').remove();
+    }
+    this.anomalyElements = [];
   },
 
   /**
@@ -168,7 +166,7 @@ const AnomalyOverlay = {
   toggle() {
     if (this.isEnabled) {
       this.disable();
-    } else if (this.currentAnomalies) {
+    } else if (this.currentDate) {
       this.render();
       this.isEnabled = true;
     }
