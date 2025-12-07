@@ -9,8 +9,20 @@ const TimelineController = {
   isPlaying: false,
   animationSpeed: 500, // milliseconds between frames
   animationFrameId: null,
-  anomalyCanvas: null,
-  anomalyCtx: null,
+
+  // Brush & Zoom state
+  focusSvg: null,
+  contextSvg: null,
+  xScaleFocus: null,
+  xScaleContext: null,
+  brush: null,
+  brushSelection: null,  // Current brush extent [startDate, endDate]
+
+  // Dimensions
+  margin: { top: 5, right: 20, bottom: 25, left: 80 },
+  focusHeight: 130,
+  contextHeight: 70,
+
   callbacks: {
     onDateChange: null,
     onPlayStatusChange: null
@@ -34,72 +46,171 @@ const TimelineController = {
   },
 
   /**
-   * Initialize anomaly timeline canvas
+   * Initialize anomaly timeline with D3 brush & zoom
    */
   initializeAnomalyTimeline() {
-    this.anomalyCanvas = document.getElementById('anomaly-canvas');
-    if (!this.anomalyCanvas) {
-      console.warn('Anomaly canvas not found');
+    const focusContainer = document.getElementById('anomaly-focus');
+    const contextContainer = document.getElementById('anomaly-context');
+
+    if (!focusContainer || !contextContainer) {
+      console.warn('Anomaly timeline containers not found');
       return;
     }
 
-    this.anomalyCtx = this.anomalyCanvas.getContext('2d');
+    // Clear any existing content
+    focusContainer.innerHTML = '';
+    contextContainer.innerHTML = '';
 
-    // Make canvas responsive
-    const container = this.anomalyCanvas.parentElement;
-    this.anomalyCanvas.width = container.clientWidth - 40;
-    this.anomalyCanvas.height = 150;
+    // Get dimensions
+    const containerWidth = focusContainer.clientWidth;
+    const width = containerWidth - this.margin.left - this.margin.right;
+    const focusHeight = this.focusHeight - this.margin.top - this.margin.bottom;
+    const contextHeight = this.contextHeight - this.margin.top - this.margin.bottom;
 
-    // Add click handler for jumping to anomalies
-    this.anomalyCanvas.addEventListener('click', (e) => {
-      this.handleAnomalyTimelineClick(e);
+    // Create SVGs
+    this.focusSvg = d3.select('#anomaly-focus')
+      .append('svg')
+      .attr('width', containerWidth)
+      .attr('height', this.focusHeight)
+      .append('g')
+      .attr('transform', `translate(${this.margin.left},${this.margin.top})`);
+
+    this.contextSvg = d3.select('#anomaly-context')
+      .append('svg')
+      .attr('width', containerWidth)
+      .attr('height', this.contextHeight)
+      .append('g')
+      .attr('transform', `translate(${this.margin.left},${this.margin.top})`);
+
+    // Parse dates
+    const minDate = new Date(this.dates[0]);
+    const maxDate = new Date(this.dates[this.dates.length - 1]);
+
+    // Create scales
+    this.xScaleContext = d3.scaleTime()
+      .domain([minDate, maxDate])
+      .range([0, width]);
+
+    // Default brush selection: last 90 days or full range if less
+    const defaultDays = 90;
+    const rangeMs = maxDate - minDate;
+    const defaultRangeMs = defaultDays * 24 * 60 * 60 * 1000;
+    const brushStart = rangeMs > defaultRangeMs
+      ? new Date(maxDate.getTime() - defaultRangeMs)
+      : minDate;
+
+    this.xScaleFocus = d3.scaleTime()
+      .domain([brushStart, maxDate])
+      .range([0, width]);
+
+    this.brushSelection = [brushStart, maxDate];
+
+    // Create brush
+    this.brush = d3.brushX()
+      .extent([[0, 0], [width, contextHeight]])
+      .on('brush end', (event) => this.handleBrush(event));
+
+    // Draw initial charts
+    this.drawContextChart(width, contextHeight);
+    this.drawFocusChart(width, focusHeight);
+
+    // Add brush to context
+    const brushG = this.contextSvg.append('g')
+      .attr('class', 'brush')
+      .call(this.brush);
+
+    // Set initial brush position
+    const x0 = this.xScaleContext(brushStart);
+    const x1 = this.xScaleContext(maxDate);
+    brushG.call(this.brush.move, [x0, x1]);
+
+    // Add click handler for focus chart
+    this.focusSvg.on('click', (event) => {
+      const [x] = d3.pointer(event);
+      const clickedDate = this.xScaleFocus.invert(x);
+      this.jumpToClosestDate(clickedDate);
     });
 
-    // Add hover handler for showing active anomalies
-    this.anomalyCanvas.addEventListener('mousemove', (e) => {
-      this.handleAnomalyTimelineHover(e);
-    });
-
-    // Remove tooltip on mouse leave
-    this.anomalyCanvas.addEventListener('mouseleave', () => {
-      this.hideAnomalyTooltip();
-    });
-
-    // Redraw on window resize
+    // Handle window resize
     window.addEventListener('resize', () => {
-      if (this.anomalyCanvas && container) {
-        this.anomalyCanvas.width = container.clientWidth - 40;
-        this.drawAnomalyTimeline();
-      }
+      this.resizeTimeline();
     });
-
-    this.drawAnomalyTimeline();
   },
 
   /**
-   * Draw anomaly timeline
+   * Handle brush event
    */
-  drawAnomalyTimeline() {
-    if (!this.anomalyCtx || !DataLoader.data.anomalies || this.dates.length === 0) {
-      return;
+  handleBrush(event) {
+    if (!event.selection) return;
+
+    const [x0, x1] = event.selection;
+    const startDate = this.xScaleContext.invert(x0);
+    const endDate = this.xScaleContext.invert(x1);
+
+    this.brushSelection = [startDate, endDate];
+    this.xScaleFocus.domain([startDate, endDate]);
+
+    // Redraw focus chart
+    const focusContainer = document.getElementById('anomaly-focus');
+    const width = focusContainer.clientWidth - this.margin.left - this.margin.right;
+    const focusHeight = this.focusHeight - this.margin.top - this.margin.bottom;
+
+    this.focusSvg.selectAll('*').remove();
+    this.drawFocusChart(width, focusHeight);
+
+    // Re-add click handler
+    this.focusSvg.on('click', (event) => {
+      const [x] = d3.pointer(event);
+      const clickedDate = this.xScaleFocus.invert(x);
+      this.jumpToClosestDate(clickedDate);
+    });
+  },
+
+  /**
+   * Jump to closest date in dates array
+   */
+  jumpToClosestDate(targetDate) {
+    let closestDate = this.dates[0];
+    let minDiff = Math.abs(new Date(closestDate) - targetDate);
+
+    for (const date of this.dates) {
+      const diff = Math.abs(new Date(date) - targetDate);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestDate = date;
+      }
     }
 
-    const ctx = this.anomalyCtx;
-    const width = this.anomalyCanvas.width;
-    const height = this.anomalyCanvas.height;
+    this.setDate(closestDate);
+    this.stop();
+  },
 
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
+  /**
+   * Resize timeline on window resize
+   */
+  resizeTimeline() {
+    const focusContainer = document.getElementById('anomaly-focus');
+    const contextContainer = document.getElementById('anomaly-context');
 
-    // Draw background
-    ctx.fillStyle = '#f8f9fa';
-    ctx.fillRect(0, 0, width, height);
+    if (!focusContainer || !contextContainer) return;
 
-    const minDate = this.dates[0];
-    const maxDate = this.dates[this.dates.length - 1];
-    const dateRange = new Date(maxDate) - new Date(minDate);
+    // Clear and reinitialize
+    focusContainer.innerHTML = '';
+    contextContainer.innerHTML = '';
 
-    // Anomaly colors
+    this.initializeAnomalyTimeline();
+  },
+
+  /**
+   * Draw context (overview) chart - shows full timeline
+   */
+  drawContextChart(width, height) {
+    if (!DataLoader.data.anomalies || this.dates.length === 0) return;
+
+    const zones = ['Etelä-Suomi', 'Keski-Suomi', 'Pohjois-Suomi', 'Lappi'];
+    const zoneHeight = height / zones.length;
+    const xScale = this.xScaleContext;
+
     const anomalyColors = {
       'Äärimmäinen kylmyys': '#2171b5',
       'Ankara pakkasjakso': '#6baed6',
@@ -108,19 +219,17 @@ const TimelineController = {
       'Äkillinen lämpeneminen': '#fdae6b'
     };
 
-    // Zone vertical positions
-    const zones = ['Etelä-Suomi', 'Keski-Suomi', 'Pohjois-Suomi', 'Lappi'];
-    const zoneHeight = height / zones.length;
-
-    // Draw zone labels
-    ctx.fillStyle = '#666';
-    ctx.font = '10px Arial';
-    ctx.textAlign = 'left';
+    // Draw zone backgrounds (alternating)
     zones.forEach((zone, i) => {
-      ctx.fillText(zone, 5, i * zoneHeight + 15);
+      this.contextSvg.append('rect')
+        .attr('x', 0)
+        .attr('y', i * zoneHeight)
+        .attr('width', width)
+        .attr('height', zoneHeight)
+        .attr('fill', i % 2 === 0 ? '#fafafa' : '#f5f5f5');
     });
 
-    // Draw winter periods as background
+    // Draw winter periods
     if (DataLoader.data.winterStarts) {
       DataLoader.data.winterStarts.forEach(winter => {
         if (!winter.winter_start) return;
@@ -129,45 +238,22 @@ const TimelineController = {
         if (zoneIndex === -1) return;
 
         const winterStart = new Date(winter.winter_start);
-        const winterEnd = winter.winter_end ? new Date(winter.winter_end) : new Date(maxDate);
+        const winterEnd = winter.winter_end ? new Date(winter.winter_end) : new Date(this.dates[this.dates.length - 1]);
 
-        const startTime = winterStart - new Date(minDate);
-        const endTime = winterEnd - new Date(minDate);
+        const x = xScale(winterStart);
+        const barWidth = xScale(winterEnd) - x;
+        const y = zoneIndex * zoneHeight;
 
-        const x = (startTime / dateRange) * width;
-        const barWidth = ((endTime - startTime) / dateRange) * width;
-        const y = zoneIndex * zoneHeight + 20;
-
-        // Draw winter period as light blue/gray background
-        ctx.fillStyle = 'rgba(173, 216, 230, 0.2)'; // Light blue
-        ctx.fillRect(x, y, barWidth, zoneHeight - 25);
-
-        // Draw winter start line
-        ctx.strokeStyle = '#4a90e2';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 3]);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + zoneHeight - 25);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Draw winter end line if exists
-        if (winter.winter_end) {
-          const endX = (endTime / dateRange) * width;
-          ctx.strokeStyle = '#e27d60';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([5, 3]);
-          ctx.beginPath();
-          ctx.moveTo(endX, y);
-          ctx.lineTo(endX, y + zoneHeight - 25);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
+        this.contextSvg.append('rect')
+          .attr('class', 'winter-period')
+          .attr('x', x)
+          .attr('y', y)
+          .attr('width', barWidth)
+          .attr('height', zoneHeight);
       });
     }
 
-    // Draw anomalies on top
+    // Draw anomaly bars (simplified for context view)
     DataLoader.data.anomalies.forEach(anomaly => {
       const startDate = anomaly.start_date || anomaly.date;
       if (!startDate) return;
@@ -175,79 +261,228 @@ const TimelineController = {
       const zoneIndex = zones.indexOf(anomaly.zone);
       if (zoneIndex === -1) return;
 
-      const startTime = new Date(startDate) - new Date(minDate);
-      const x = (startTime / dateRange) * width;
-      const y = zoneIndex * zoneHeight + 20;
-
+      const start = new Date(startDate);
       const duration = anomaly.duration_days || 1;
-      const durationTime = duration * 24 * 60 * 60 * 1000;
-      const barWidth = Math.max(3, (durationTime / dateRange) * width);
+      const end = new Date(start.getTime() + duration * 24 * 60 * 60 * 1000);
 
-      const color = anomalyColors[anomaly.type] || '#999';
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, barWidth, zoneHeight - 25);
+      const x = xScale(start);
+      const barWidth = Math.max(2, xScale(end) - x);
+      const y = zoneIndex * zoneHeight + 2;
 
-      // Draw outline
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, barWidth, zoneHeight - 25);
+      this.contextSvg.append('rect')
+        .attr('class', 'anomaly-bar')
+        .attr('x', x)
+        .attr('y', y)
+        .attr('width', barWidth)
+        .attr('height', zoneHeight - 4)
+        .attr('fill', anomalyColors[anomaly.type] || '#999');
+    });
+
+    // Draw x-axis (simplified)
+    const xAxis = d3.axisBottom(xScale)
+      .ticks(5)
+      .tickFormat(d3.timeFormat('%Y'));
+
+    this.contextSvg.append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${height})`)
+      .call(xAxis);
+  },
+
+  /**
+   * Draw focus (detail) chart - shows selected range
+   */
+  drawFocusChart(width, height) {
+    if (!DataLoader.data.anomalies || this.dates.length === 0) return;
+
+    const zones = ['Etelä-Suomi', 'Keski-Suomi', 'Pohjois-Suomi', 'Lappi'];
+    const zoneHeight = height / zones.length;
+    const xScale = this.xScaleFocus;
+    const [startDomain, endDomain] = this.xScaleFocus.domain();
+
+    const anomalyColors = {
+      'Äärimmäinen kylmyys': '#2171b5',
+      'Ankara pakkasjakso': '#6baed6',
+      'Hellejakso': '#de2d26',
+      'Takatalvi': '#756bb1',
+      'Äkillinen lämpeneminen': '#fdae6b'
+    };
+
+    // Draw zone backgrounds and labels
+    zones.forEach((zone, i) => {
+      this.focusSvg.append('rect')
+        .attr('x', 0)
+        .attr('y', i * zoneHeight)
+        .attr('width', width)
+        .attr('height', zoneHeight)
+        .attr('fill', i % 2 === 0 ? '#fafafa' : '#f5f5f5');
+
+      this.focusSvg.append('text')
+        .attr('class', 'zone-label')
+        .attr('x', -5)
+        .attr('y', i * zoneHeight + zoneHeight / 2)
+        .attr('text-anchor', 'end')
+        .attr('dominant-baseline', 'middle')
+        .text(zone);
+    });
+
+    // Draw winter periods
+    if (DataLoader.data.winterStarts) {
+      DataLoader.data.winterStarts.forEach(winter => {
+        if (!winter.winter_start) return;
+
+        const zoneIndex = zones.indexOf(winter.zone);
+        if (zoneIndex === -1) return;
+
+        const winterStart = new Date(winter.winter_start);
+        const winterEnd = winter.winter_end ? new Date(winter.winter_end) : new Date(this.dates[this.dates.length - 1]);
+
+        // Skip if outside visible range
+        if (winterEnd < startDomain || winterStart > endDomain) return;
+
+        const x = Math.max(0, xScale(winterStart));
+        const endX = Math.min(width, xScale(winterEnd));
+        const barWidth = endX - x;
+        const y = zoneIndex * zoneHeight;
+
+        this.focusSvg.append('rect')
+          .attr('class', 'winter-period')
+          .attr('x', x)
+          .attr('y', y)
+          .attr('width', barWidth)
+          .attr('height', zoneHeight);
+
+        // Winter start line (if in view)
+        if (winterStart >= startDomain && winterStart <= endDomain) {
+          this.focusSvg.append('line')
+            .attr('class', 'winter-start-line')
+            .attr('x1', xScale(winterStart))
+            .attr('y1', y)
+            .attr('x2', xScale(winterStart))
+            .attr('y2', y + zoneHeight);
+        }
+
+        // Winter end line (if in view)
+        if (winter.winter_end && winterEnd >= startDomain && winterEnd <= endDomain) {
+          this.focusSvg.append('line')
+            .attr('class', 'winter-end-line')
+            .attr('x1', xScale(winterEnd))
+            .attr('y1', y)
+            .attr('x2', xScale(winterEnd))
+            .attr('y2', y + zoneHeight);
+        }
+      });
+    }
+
+    // Draw anomaly bars with tooltips
+    const self = this;
+    DataLoader.data.anomalies.forEach(anomaly => {
+      const startDate = anomaly.start_date || anomaly.date;
+      if (!startDate) return;
+
+      const zoneIndex = zones.indexOf(anomaly.zone);
+      if (zoneIndex === -1) return;
+
+      const start = new Date(startDate);
+      const duration = anomaly.duration_days || 1;
+      const end = new Date(start.getTime() + duration * 24 * 60 * 60 * 1000);
+
+      // Skip if outside visible range
+      if (end < startDomain || start > endDomain) return;
+
+      const x = Math.max(0, xScale(start));
+      const endX = Math.min(width, xScale(end));
+      const barWidth = Math.max(3, endX - x);
+      const y = zoneIndex * zoneHeight + 3;
+
+      this.focusSvg.append('rect')
+        .attr('class', 'anomaly-bar')
+        .attr('x', x)
+        .attr('y', y)
+        .attr('width', barWidth)
+        .attr('height', zoneHeight - 6)
+        .attr('fill', anomalyColors[anomaly.type] || '#999')
+        .attr('stroke', anomalyColors[anomaly.type] || '#999')
+        .attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .on('mouseover', function(event) {
+          d3.select(this).attr('stroke-width', 2);
+          self.showAnomalyTooltip(event.clientX, event.clientY, startDate,
+            [anomaly], self.getWinterStatusForDate(startDate));
+        })
+        .on('mouseout', function() {
+          d3.select(this).attr('stroke-width', 1);
+          self.hideAnomalyTooltip();
+        })
+        .on('click', function(event) {
+          event.stopPropagation();
+          self.setDate(startDate);
+          self.stop();
+        });
     });
 
     // Draw current date indicator
     if (this.currentDate) {
-      const currentTime = new Date(this.currentDate) - new Date(minDate);
-      const x = (currentTime / dateRange) * width;
-
-      ctx.strokeStyle = '#e74c3c';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-  },
-
-  /**
-   * Handle hover on anomaly timeline - show tooltip with active anomalies
-   * @param {MouseEvent} e - Mouse event
-   */
-  handleAnomalyTimelineHover(e) {
-    if (!this.anomalyCanvas || this.dates.length === 0) return;
-
-    const rect = this.anomalyCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    // Use actual canvas width, not CSS width
-    const width = this.anomalyCanvas.width;
-    const canvasDisplayWidth = rect.width;
-
-    // Scale the mouse position to canvas coordinates
-    const scaledX = (x / canvasDisplayWidth) * width;
-
-    const minDate = new Date(this.dates[0]);
-    const maxDate = new Date(this.dates[this.dates.length - 1]);
-    const dateRange = maxDate - minDate;
-
-    const hoveredTime = (scaledX / width) * dateRange;
-    const hoveredDate = new Date(minDate.getTime() + hoveredTime);
-
-    // Find closest date in our dates array
-    let closestDate = this.dates[0];
-    let minDiff = Math.abs(new Date(closestDate) - hoveredDate);
-
-    for (const date of this.dates) {
-      const diff = Math.abs(new Date(date) - hoveredDate);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestDate = date;
+      const currentDateObj = new Date(this.currentDate);
+      if (currentDateObj >= startDomain && currentDateObj <= endDomain) {
+        this.focusSvg.append('line')
+          .attr('class', 'current-date-line')
+          .attr('x1', xScale(currentDateObj))
+          .attr('y1', 0)
+          .attr('x2', xScale(currentDateObj))
+          .attr('y2', height);
       }
     }
 
-    // Get anomalies for this date
-    const anomalies = DataLoader.getAnomaliesForDate(closestDate);
-    const winterStatus = this.getWinterStatusForDate(closestDate);
+    // Draw x-axis
+    const daysDiff = (endDomain - startDomain) / (1000 * 60 * 60 * 24);
+    let tickFormat, ticks;
 
-    // Show tooltip
-    this.showAnomalyTooltip(e.clientX, e.clientY, closestDate, anomalies, winterStatus);
+    if (daysDiff <= 14) {
+      tickFormat = d3.timeFormat('%d.%m');
+      ticks = d3.timeDay.every(1);
+    } else if (daysDiff <= 60) {
+      tickFormat = d3.timeFormat('%d.%m');
+      ticks = d3.timeWeek.every(1);
+    } else if (daysDiff <= 365) {
+      tickFormat = d3.timeFormat('%b %Y');
+      ticks = d3.timeMonth.every(1);
+    } else {
+      tickFormat = d3.timeFormat('%b %Y');
+      ticks = d3.timeMonth.every(3);
+    }
+
+    const xAxis = d3.axisBottom(xScale)
+      .ticks(ticks)
+      .tickFormat(tickFormat);
+
+    this.focusSvg.append('g')
+      .attr('class', 'x-axis')
+      .attr('transform', `translate(0,${height})`)
+      .call(xAxis);
+  },
+
+  /**
+   * Redraw timeline (called when current date changes)
+   */
+  drawAnomalyTimeline() {
+    if (!this.focusSvg || !this.xScaleFocus) return;
+
+    const focusContainer = document.getElementById('anomaly-focus');
+    if (!focusContainer) return;
+
+    const width = focusContainer.clientWidth - this.margin.left - this.margin.right;
+    const focusHeight = this.focusHeight - this.margin.top - this.margin.bottom;
+
+    this.focusSvg.selectAll('*').remove();
+    this.drawFocusChart(width, focusHeight);
+
+    // Re-add click handler
+    this.focusSvg.on('click', (event) => {
+      const [x] = d3.pointer(event);
+      const clickedDate = this.xScaleFocus.invert(x);
+      this.jumpToClosestDate(clickedDate);
+    });
   },
 
   /**
@@ -378,41 +613,6 @@ const TimelineController = {
     if (tooltip) {
       tooltip.style.display = 'none';
     }
-  },
-
-  /**
-   * Handle click on anomaly timeline
-   * @param {MouseEvent} e - Click event
-   */
-  handleAnomalyTimelineClick(e) {
-    if (!this.anomalyCanvas || this.dates.length === 0) return;
-
-    const rect = this.anomalyCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = this.anomalyCanvas.width;
-
-    const minDate = new Date(this.dates[0]);
-    const maxDate = new Date(this.dates[this.dates.length - 1]);
-    const dateRange = maxDate - minDate;
-
-    const clickedTime = (x / width) * dateRange;
-    const clickedDate = new Date(minDate.getTime() + clickedTime);
-
-    // Find closest date in our dates array
-    const clickedDateStr = clickedDate.toISOString().split('T')[0];
-    let closestDate = this.dates[0];
-    let minDiff = Math.abs(new Date(closestDate) - clickedDate);
-
-    for (const date of this.dates) {
-      const diff = Math.abs(new Date(date) - clickedDate);
-      if (diff < minDiff) {
-        minDiff = diff;
-        closestDate = date;
-      }
-    }
-
-    this.setDate(closestDate);
-    this.stop();
   },
 
   /**

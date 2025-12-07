@@ -32,8 +32,47 @@ print(f"   Date range: {df['date'].min()} to {df['date'].max()}")
 print(f"   Stations: {df['station_name'].nunique()}")
 print(f"   Zones: {df['zone_name'].nunique()}")
 
-# 2. Create zone-daily summaries
-print("\n2. Aggregating to zone-daily summaries...")
+# 2. Create station-daily data (no zone averaging)
+print("\n2. Creating station-daily data (preserving individual station values)...")
+station_daily = df[['date', 'fmisid', 'station_name', 'zone', 'zone_name',
+                    'Air temperature', 'Minimum temperature', 'Maximum temperature',
+                    'Snow depth', 'Precipitation amount', 'Ground minimum temperature']].copy()
+
+station_daily.rename(columns={
+    'Air temperature': 'temp_mean',
+    'Minimum temperature': 'temp_min',
+    'Maximum temperature': 'temp_max',
+    'Snow depth': 'snow_depth',
+    'Precipitation amount': 'precipitation',
+    'Ground minimum temperature': 'ground_temp_min'
+}, inplace=True)
+
+# Round to 1 decimal place
+numeric_cols = ['temp_mean', 'temp_min', 'temp_max', 'snow_depth', 'precipitation', 'ground_temp_min']
+station_daily[numeric_cols] = station_daily[numeric_cols].round(1)
+
+# Replace NaN with None (which becomes null in JSON)
+station_daily = station_daily.replace({float('nan'): None})
+
+print(f"   Created {len(station_daily):,} station-daily records")
+
+# Convert to JSON structure
+station_summary = station_daily.to_dict(orient='records')
+
+# Save uncompressed
+output_file = DATA_DIR / "daily_station_data.json"
+with open(output_file, 'w') as f:
+    json.dump(station_summary, f)
+print(f"   Saved: {output_file} ({output_file.stat().st_size / 1024:.0f} KB)")
+
+# Save gzipped
+output_file_gz = DATA_DIR / "daily_station_data.json.gz"
+with gzip.open(output_file_gz, 'wt') as f:
+    json.dump(station_summary, f)
+print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
+
+# Also keep zone summaries for statistics display
+print("\n2b. Creating zone summaries for statistics...")
 zone_metrics = df.groupby(['date', 'zone', 'zone_name']).agg({
     'Air temperature': 'mean',
     'Minimum temperature': 'min',
@@ -41,7 +80,7 @@ zone_metrics = df.groupby(['date', 'zone', 'zone_name']).agg({
     'Snow depth': 'mean',
     'Precipitation amount': 'sum',
     'Ground minimum temperature': 'min',
-    'station_name': 'count'  # number of stations reporting
+    'station_name': 'count'
 }).reset_index()
 
 zone_metrics.rename(columns={
@@ -54,30 +93,14 @@ zone_metrics.rename(columns={
     'Ground minimum temperature': 'ground_temp_min'
 }, inplace=True)
 
-# Round to 1 decimal place
-numeric_cols = ['temp_mean', 'temp_min', 'temp_max', 'snow_depth', 'precipitation', 'ground_temp_min']
 zone_metrics[numeric_cols] = zone_metrics[numeric_cols].round(1)
-
-# Replace NaN with None (which becomes null in JSON)
 zone_metrics = zone_metrics.replace({float('nan'): None})
-
-print(f"   Aggregated to {len(zone_metrics):,} zone-daily records")
-print(f"   Reduction: {len(df)/len(zone_metrics):.1f}x smaller")
-
-# Convert to JSON structure
 zone_summary = zone_metrics.to_dict(orient='records')
 
-# Save uncompressed
 output_file = DATA_DIR / "daily_zone_summary.json"
 with open(output_file, 'w') as f:
     json.dump(zone_summary, f)
 print(f"   Saved: {output_file} ({output_file.stat().st_size / 1024:.0f} KB)")
-
-# Save gzipped
-output_file_gz = DATA_DIR / "daily_zone_summary.json.gz"
-with gzip.open(output_file_gz, 'wt') as f:
-    json.dump(zone_summary, f)
-print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
 
 # 3. Extract station locations
 print("\n3. Extracting station locations...")
@@ -160,11 +183,13 @@ print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} K
 print("\n" + "=" * 50)
 print("PREPROCESSING COMPLETE")
 print("=" * 50)
-print(f"\nData reduction:")
+print(f"\nData:")
 print(f"  Original: {len(df):,} rows")
-print(f"  Zone summaries: {len(zone_metrics):,} rows ({len(df)/len(zone_metrics):.1f}x reduction)")
+print(f"  Station-daily: {len(station_daily):,} rows (individual station data)")
+print(f"  Zone summaries: {len(zone_metrics):,} rows (for statistics)")
 print(f"\nOutput files created in: {DATA_DIR}")
-print(f"  ✓ daily_zone_summary.json")
+print(f"  ✓ daily_station_data.json (primary visualization data)")
+print(f"  ✓ daily_zone_summary.json (zone statistics)")
 print(f"  ✓ station_locations.json")
 print(f"  ✓ anomalies.json")
 print(f"  ✓ winter_starts.json")

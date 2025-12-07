@@ -73,7 +73,7 @@
     min-width: 50px;
 }
 
-/* Anomaly Timeline */
+/* Anomaly Timeline with Brush & Zoom */
 #anomaly-timeline {
     margin-bottom: 1rem;
     transition: all 0.3s ease;
@@ -81,7 +81,7 @@
 }
 
 #anomaly-timeline.anomaly-timeline-visible {
-    max-height: 250px;
+    max-height: 300px;
     opacity: 1;
 }
 
@@ -92,25 +92,167 @@
     padding: 0;
 }
 
-#anomaly-timeline h4 {
-    font-size: 0.9rem;
+.anomaly-timeline-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
     margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.anomaly-timeline-header h4 {
+    font-size: 0.9rem;
+    margin: 0;
     color: #555;
 }
 
-#anomaly-canvas {
+.anomaly-legend-inline {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.7rem;
+    color: #666;
+}
+
+.anomaly-legend-inline .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.winter-period-icon {
+    display: inline-block;
+    width: 15px;
+    height: 3px;
+    background: rgba(173, 216, 230, 0.5);
+    border: 1px solid #4a90e2;
+    vertical-align: middle;
+}
+
+.winter-start-icon {
+    color: #4a90e2;
+}
+
+.winter-start-icon::before {
+    content: "┊";
+}
+
+.winter-end-icon {
+    color: #e27d60;
+}
+
+.winter-end-icon::before {
+    content: "┊";
+}
+
+.brush-hint {
+    font-size: 0.75rem;
+    color: #999;
+    font-style: italic;
+    margin-left: auto;
+}
+
+/* Focus (Detail) and Context (Overview) charts */
+.anomaly-chart {
     width: 100%;
-    height: 150px;
     border: 1px solid #ddd;
     border-radius: 4px;
     background: #fafafa;
-    cursor: pointer;
-    transition: all 0.2s;
 }
 
-#anomaly-canvas:hover {
+#anomaly-focus {
+    height: 130px;
+    margin-bottom: 0.5rem;
+}
+
+#anomaly-context {
+    height: 70px;
+    cursor: crosshair;
+}
+
+#anomaly-context:hover {
     border-color: #3498db;
     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+}
+
+/* D3 Brush Styling */
+.brush .selection {
+    fill: rgba(52, 152, 219, 0.3);
+    stroke: #3498db;
+    stroke-width: 1px;
+}
+
+.brush .handle {
+    fill: #3498db;
+}
+
+.brush .overlay {
+    cursor: crosshair;
+}
+
+/* Zone labels */
+.zone-label {
+    font-size: 9px;
+    fill: #666;
+}
+
+/* Anomaly bars */
+.anomaly-bar {
+    opacity: 0.85;
+    transition: opacity 0.2s;
+}
+
+.anomaly-bar:hover {
+    opacity: 1;
+    stroke-width: 2px;
+}
+
+/* Winter period styling */
+.winter-period {
+    fill: rgba(173, 216, 230, 0.2);
+}
+
+.winter-start-line {
+    stroke: #4a90e2;
+    stroke-width: 2px;
+    stroke-dasharray: 5, 3;
+}
+
+.winter-end-line {
+    stroke: #e27d60;
+    stroke-width: 2px;
+    stroke-dasharray: 5, 3;
+}
+
+/* Current date indicator */
+.current-date-line {
+    stroke: #e74c3c;
+    stroke-width: 2px;
+}
+
+/* Date range display */
+.date-range-display {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 0.25rem;
+    padding: 0 5px;
+}
+
+.date-range-display .selected-range {
+    font-weight: 600;
+    color: #3498db;
+}
+
+/* D3 axis styling */
+.x-axis path,
+.x-axis line {
+    stroke: #ccc;
+}
+
+.x-axis text {
+    font-size: 10px;
+    fill: #666;
 }
 
 /* Date Slider */

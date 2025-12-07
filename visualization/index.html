@@ -161,16 +161,21 @@
                     </div>
                 </div>
 
-                <!-- Anomaly Timeline -->
+                <!-- Anomaly Timeline with Brush & Zoom -->
                 <div id="anomaly-timeline" class="anomaly-timeline-visible">
-                    <h4>Anomaly Timeline
-                        <span style="font-size: 0.7rem; color: #666; font-weight: normal; margin-left: 1rem;">
-                            <span style="display: inline-block; width: 15px; height: 3px; background: rgba(173, 216, 230, 0.5); border: 1px solid #4a90e2; vertical-align: middle;"></span> Winter period
-                            <span style="margin-left: 0.5rem; color: #4a90e2;">┊</span> Winter start
-                            <span style="margin-left: 0.5rem; color: #e27d60;">┊</span> Winter end
+                    <div class="anomaly-timeline-header">
+                        <h4>Anomaly Timeline</h4>
+                        <span class="anomaly-legend-inline">
+                            <span class="legend-item"><span class="winter-period-icon"></span> Winter period</span>
+                            <span class="legend-item"><span class="winter-start-icon"></span> Winter start</span>
+                            <span class="legend-item"><span class="winter-end-icon"></span> Winter end</span>
                         </span>
-                    </h4>
-                    <canvas id="anomaly-canvas" width="1200" height="150"></canvas>
+                        <span class="brush-hint">Drag on the overview below to select time range</span>
+                    </div>
+                    <!-- Detail (Focus) View - shows selected range in detail -->
+                    <div id="anomaly-focus" class="anomaly-chart"></div>
+                    <!-- Overview (Context) View - shows full timeline with brush selector -->
+                    <div id="anomaly-context" class="anomaly-chart"></div>
                 </div>
 
                 <!-- Date Slider -->

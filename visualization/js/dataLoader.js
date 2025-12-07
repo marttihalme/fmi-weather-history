@@ -6,7 +6,8 @@
 const DataLoader = {
     // Data storage
     data: {
-        zoneSummary: null,      // Daily zone summaries
+        zoneSummary: null,      // Daily zone summaries (for statistics)
+        stationData: null,       // Daily station data (individual measurements)
         stations: null,          // Station locations
         anomalies: null,         // Anomaly events
         winterStarts: null,      // Winter progression
@@ -16,6 +17,7 @@ const DataLoader = {
     // Loading state
     loading: {
         zoneSummary: false,
+        stationData: false,
         stations: false,
         anomalies: false,
         winterStarts: false,
@@ -25,6 +27,7 @@ const DataLoader = {
     // Loaded flags
     loaded: {
         zoneSummary: false,
+        stationData: false,
         stations: false,
         anomalies: false,
         winterStarts: false,
@@ -40,8 +43,9 @@ const DataLoader = {
 
         try {
             // Load in parallel for speed
-            const [zoneSummary, stations, anomalies, winterStarts] = await Promise.all([
+            const [zoneSummary, stationData, stations, anomalies, winterStarts] = await Promise.all([
                 this.loadZoneSummary(),
+                this.loadStationData(),
                 this.loadStations(),
                 this.loadAnomalies(),
                 this.loadWinterStarts()
@@ -49,6 +53,7 @@ const DataLoader = {
 
             console.log('Essential data loaded successfully');
             console.log('- Zone summaries:', zoneSummary.length, 'records');
+            console.log('- Station data:', stationData.length, 'records');
             console.log('- Stations:', stations.length, 'locations');
             console.log('- Anomalies:', anomalies.length, 'events');
             console.log('- Winter seasons:', winterStarts.length, 'records');
@@ -60,6 +65,7 @@ const DataLoader = {
 
             return {
                 zoneSummary,
+                stationData,
                 stations,
                 anomalies,
                 winterStarts
@@ -88,6 +94,25 @@ const DataLoader = {
             return data;
         } finally {
             this.loading.zoneSummary = false;
+        }
+    },
+
+    /**
+     * Load station-daily data (individual station measurements)
+     * @returns {Promise<Array>} Station data records
+     */
+    async loadStationData() {
+        if (this.loaded.stationData) return this.data.stationData;
+
+        this.loading.stationData = true;
+
+        try {
+            const data = await this.fetchJSON('data/daily_station_data.json');
+            this.data.stationData = data;
+            this.loaded.stationData = true;
+            return data;
+        } finally {
+            this.loading.stationData = false;
         }
     },
 
@@ -201,7 +226,7 @@ const DataLoader = {
     },
 
     /**
-     * Get all data for a specific date
+     * Get all zone data for a specific date
      * @param {string} date - Date string (YYYY-MM-DD)
      * @returns {Array} Array of zone records
      */
@@ -209,6 +234,19 @@ const DataLoader = {
         if (!this.data.zoneSummary) return [];
 
         return this.data.zoneSummary.filter(record =>
+            record.date === date
+        );
+    },
+
+    /**
+     * Get all station data for a specific date
+     * @param {string} date - Date string (YYYY-MM-DD)
+     * @returns {Array} Array of station records with measurements
+     */
+    getStationDataForDate(date) {
+        if (!this.data.stationData) return [];
+
+        return this.data.stationData.filter(record =>
             record.date === date
         );
     },
@@ -331,6 +369,7 @@ const DataLoader = {
      */
     isReady() {
         return this.loaded.zoneSummary &&
+               this.loaded.stationData &&
                this.loaded.stations &&
                this.loaded.anomalies &&
                this.loaded.winterStarts;

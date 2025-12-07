@@ -148,19 +148,19 @@ const App = {
         return;
       }
 
-      // Get data for the current date from DataLoader
-      const dateData = DataLoader.getDateData(date);
+      // Get station data for the current date (individual station measurements)
+      const stationDataArray = DataLoader.getStationDataForDate(date);
 
-      if (!dateData || dateData.length === 0) {
-        console.warn('No data found for date:', date);
+      if (!stationDataArray || stationDataArray.length === 0) {
+        console.warn('No station data found for date:', date);
         return;
       }
 
-      console.log('Found data for date:', dateData.length, 'zones');
+      console.log('Found station data for date:', stationDataArray.length, 'stations');
 
-      // Expand zone data to station data using real stations
-      const stationData = this.expandZoneDataToStations(dateData);
-      console.log('Expanded to', Object.keys(stationData).length, 'stations');
+      // Convert array to object keyed by fmisid, adding lat/lon from stations list
+      const stationData = this.convertStationDataToObject(stationDataArray);
+      console.log('Converted to', Object.keys(stationData).length, 'station records');
 
       this.displayData(stationData);
     } catch (error) {
@@ -355,37 +355,44 @@ const App = {
   },
 
   /**
-   * Expand zone data to station data using real station locations
+   * Convert station data array to object keyed by fmisid
+   * Adds lat/lon from the stations list
    */
-  expandZoneDataToStations(zoneDataArray) {
+  convertStationDataToObject(stationDataArray) {
     const stationData = {};
 
-    // For each zone record
-    zoneDataArray.forEach(zoneRecord => {
-      // Find all stations in this zone
-      const zoneStations = this.stations.filter(s => s.zone === zoneRecord.zone);
+    // Create a lookup map for station locations
+    const stationLocations = {};
+    this.stations.forEach(s => {
+      stationLocations[s.fmisid] = {
+        lat: s.latitude,
+        lon: s.longitude
+      };
+    });
 
-      // Create a record for each station with the zone's aggregated values
-      // Add some random variation to make it look realistic
-      zoneStations.forEach(station => {
-        const variation = () => (Math.random() - 0.5) * 2; // -1 to +1
+    // Convert each station record
+    stationDataArray.forEach(record => {
+      const location = stationLocations[record.fmisid];
+      if (!location) {
+        console.warn('No location found for station:', record.fmisid);
+        return;
+      }
 
-        stationData[station.fmisid] = {
-          id: station.fmisid,
-          name: station.station_name,
-          station_name: station.station_name,
-          lat: station.latitude,
-          lon: station.longitude,
-          zone: station.zone,
-          // Add slight variation to zone averages for visual interest
-          temp_mean: zoneRecord.temp_mean ? zoneRecord.temp_mean + variation() : null,
-          temp_min: zoneRecord.temp_min ? zoneRecord.temp_min + variation() : null,
-          temp_max: zoneRecord.temp_max ? zoneRecord.temp_max + variation() : null,
-          snow_depth: zoneRecord.snow_depth ? Math.max(0, zoneRecord.snow_depth + variation() * 5) : null,
-          precipitation: zoneRecord.precipitation ? Math.max(0, zoneRecord.precipitation + variation() * 2) : null,
-          ground_temp_min: zoneRecord.ground_temp_min ? zoneRecord.ground_temp_min + variation() : null
-        };
-      });
+      stationData[record.fmisid] = {
+        id: record.fmisid,
+        name: record.station_name,
+        station_name: record.station_name,
+        lat: location.lat,
+        lon: location.lon,
+        zone: record.zone,
+        // Use actual station measurements (no averaging)
+        temp_mean: record.temp_mean,
+        temp_min: record.temp_min,
+        temp_max: record.temp_max,
+        snow_depth: record.snow_depth,
+        precipitation: record.precipitation,
+        ground_temp_min: record.ground_temp_min
+      };
     });
 
     return stationData;
