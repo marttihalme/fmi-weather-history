@@ -34,7 +34,6 @@
                         <option value="temp_max">Maximum Temperature</option>
                         <option value="snow_depth">Snow Depth</option>
                         <option value="precipitation">Precipitation Amount</option>
-                        <option value="ground_temp_min">Ground Minimum Temperature</option>
                     </select>
                 </div>
 
@@ -80,14 +79,6 @@
                             <div id="color-scale-labels">
                                 <span id="scale-min">-40°C</span>
                                 <span id="scale-max">+35°C</span>
-                            </div>
-                        </div>
-
-                        <!-- Zone Status -->
-                        <div class="legend-section">
-                            <h4>Zone Status</h4>
-                            <div id="zone-status-list">
-                                <!-- Populated dynamically -->
                             </div>
                         </div>
 
@@ -147,20 +138,6 @@
 
             <!-- Timeline Controls -->
             <div id="timeline-container">
-                <div id="timeline-controls">
-                    <button id="btn-first" title="First day">◄◄</button>
-                    <button id="btn-prev" title="Previous day">◄</button>
-                    <button id="btn-play" title="Play/Pause">▶</button>
-                    <button id="btn-next" title="Next day">►</button>
-                    <button id="btn-last" title="Last day">►►</button>
-
-                    <div class="speed-control">
-                        <label for="speed-slider">Speed:</label>
-                        <input type="range" id="speed-slider" min="50" max="500" value="200" step="50">
-                        <span id="speed-value">200ms</span>
-                    </div>
-                </div>
-
                 <!-- Anomaly Timeline with Brush & Zoom -->
                 <div id="anomaly-timeline" class="anomaly-timeline-visible">
                     <div class="anomaly-timeline-header">

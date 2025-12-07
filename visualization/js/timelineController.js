@@ -229,27 +229,48 @@ const TimelineController = {
         .attr('fill', i % 2 === 0 ? '#fafafa' : '#f5f5f5');
     });
 
-    // Draw winter periods
+    // Draw winter periods with cold spells (detailed view)
     if (DataLoader.data.winterStarts) {
       DataLoader.data.winterStarts.forEach(winter => {
-        if (!winter.winter_start) return;
-
         const zoneIndex = zones.indexOf(winter.zone);
         if (zoneIndex === -1) return;
 
-        const winterStart = new Date(winter.winter_start);
-        const winterEnd = winter.winter_end ? new Date(winter.winter_end) : new Date(this.dates[this.dates.length - 1]);
-
-        const x = xScale(winterStart);
-        const barWidth = xScale(winterEnd) - x;
         const y = zoneIndex * zoneHeight;
 
-        this.contextSvg.append('rect')
-          .attr('class', 'winter-period')
-          .attr('x', x)
-          .attr('y', y)
-          .attr('width', barWidth)
-          .attr('height', zoneHeight);
+        // If we have detailed cold_spells data, draw individual spells
+        if (winter.cold_spells && winter.cold_spells.length > 0) {
+          winter.cold_spells.forEach(spell => {
+            const spellStart = new Date(spell.start);
+            const spellEnd = new Date(spell.end);
+
+            const x = xScale(spellStart);
+            const barWidth = Math.max(1, xScale(spellEnd) - x);
+
+            this.contextSvg.append('rect')
+              .attr('class', 'winter-period cold-spell')
+              .attr('x', x)
+              .attr('y', y)
+              .attr('width', barWidth)
+              .attr('height', zoneHeight)
+              .attr('fill', 'rgba(33, 113, 181, 0.4)');
+          });
+        } else if (winter.season_start || winter.winter_start) {
+          // Fallback to old format
+          const winterStart = new Date(winter.season_start || winter.winter_start);
+          const winterEnd = winter.season_end || winter.winter_end
+            ? new Date(winter.season_end || winter.winter_end)
+            : new Date(this.dates[this.dates.length - 1]);
+
+          const x = xScale(winterStart);
+          const barWidth = xScale(winterEnd) - x;
+
+          this.contextSvg.append('rect')
+            .attr('class', 'winter-period')
+            .attr('x', x)
+            .attr('y', y)
+            .attr('width', barWidth)
+            .attr('height', zoneHeight);
+        }
       });
     }
 
@@ -326,50 +347,141 @@ const TimelineController = {
         .text(zone);
     });
 
-    // Draw winter periods
+    // Draw winter periods with detailed cold/warm spells
     if (DataLoader.data.winterStarts) {
-      DataLoader.data.winterStarts.forEach(winter => {
-        if (!winter.winter_start) return;
+      const self = this;
 
+      DataLoader.data.winterStarts.forEach(winter => {
         const zoneIndex = zones.indexOf(winter.zone);
         if (zoneIndex === -1) return;
 
-        const winterStart = new Date(winter.winter_start);
-        const winterEnd = winter.winter_end ? new Date(winter.winter_end) : new Date(this.dates[this.dates.length - 1]);
-
-        // Skip if outside visible range
-        if (winterEnd < startDomain || winterStart > endDomain) return;
-
-        const x = Math.max(0, xScale(winterStart));
-        const endX = Math.min(width, xScale(winterEnd));
-        const barWidth = endX - x;
         const y = zoneIndex * zoneHeight;
 
-        this.focusSvg.append('rect')
-          .attr('class', 'winter-period')
-          .attr('x', x)
-          .attr('y', y)
-          .attr('width', barWidth)
-          .attr('height', zoneHeight);
+        // If we have detailed cold_spells data, draw individual spells
+        if (winter.cold_spells && winter.cold_spells.length > 0) {
+          // Draw cold spells (frost periods)
+          winter.cold_spells.forEach(spell => {
+            const spellStart = new Date(spell.start);
+            const spellEnd = new Date(spell.end);
 
-        // Winter start line (if in view)
-        if (winterStart >= startDomain && winterStart <= endDomain) {
-          this.focusSvg.append('line')
-            .attr('class', 'winter-start-line')
-            .attr('x1', xScale(winterStart))
-            .attr('y1', y)
-            .attr('x2', xScale(winterStart))
-            .attr('y2', y + zoneHeight);
-        }
+            // Skip if outside visible range
+            if (spellEnd < startDomain || spellStart > endDomain) return;
 
-        // Winter end line (if in view)
-        if (winter.winter_end && winterEnd >= startDomain && winterEnd <= endDomain) {
-          this.focusSvg.append('line')
-            .attr('class', 'winter-end-line')
-            .attr('x1', xScale(winterEnd))
-            .attr('y1', y)
-            .attr('x2', xScale(winterEnd))
-            .attr('y2', y + zoneHeight);
+            const x = Math.max(0, xScale(spellStart));
+            const endX = Math.min(width, xScale(spellEnd));
+            const barWidth = Math.max(2, endX - x);
+
+            this.focusSvg.append('rect')
+              .attr('class', 'winter-period cold-spell')
+              .attr('x', x)
+              .attr('y', y + 1)
+              .attr('width', barWidth)
+              .attr('height', zoneHeight - 2)
+              .attr('fill', 'rgba(33, 113, 181, 0.5)')
+              .attr('stroke', 'rgba(33, 113, 181, 0.8)')
+              .attr('stroke-width', 0.5)
+              .style('cursor', 'pointer')
+              .on('mouseover', function(event) {
+                d3.select(this).attr('fill', 'rgba(33, 113, 181, 0.7)');
+                self.showWinterSpellTooltip(event.clientX, event.clientY, winter, spell, 'cold');
+              })
+              .on('mouseout', function() {
+                d3.select(this).attr('fill', 'rgba(33, 113, 181, 0.5)');
+                self.hideAnomalyTooltip();
+              });
+          });
+
+          // Draw warm spells (interruptions) - optional, shown as gaps or different color
+          if (winter.warm_spells) {
+            winter.warm_spells.forEach(spell => {
+              const spellStart = new Date(spell.start);
+              const spellEnd = new Date(spell.end);
+
+              if (spellEnd < startDomain || spellStart > endDomain) return;
+
+              const x = Math.max(0, xScale(spellStart));
+              const endX = Math.min(width, xScale(spellEnd));
+              const barWidth = Math.max(2, endX - x);
+
+              this.focusSvg.append('rect')
+                .attr('class', 'winter-period warm-spell')
+                .attr('x', x)
+                .attr('y', y + zoneHeight * 0.3)
+                .attr('width', barWidth)
+                .attr('height', zoneHeight * 0.4)
+                .attr('fill', 'rgba(253, 174, 107, 0.6)')
+                .attr('stroke', 'rgba(253, 174, 107, 0.9)')
+                .attr('stroke-width', 0.5)
+                .style('cursor', 'pointer')
+                .on('mouseover', function(event) {
+                  d3.select(this).attr('fill', 'rgba(253, 174, 107, 0.8)');
+                  self.showWinterSpellTooltip(event.clientX, event.clientY, winter, spell, 'warm');
+                })
+                .on('mouseout', function() {
+                  d3.select(this).attr('fill', 'rgba(253, 174, 107, 0.6)');
+                  self.hideAnomalyTooltip();
+                });
+            });
+          }
+
+          // Draw season boundary lines
+          const seasonStart = new Date(winter.season_start);
+          const seasonEnd = new Date(winter.season_end);
+
+          if (seasonStart >= startDomain && seasonStart <= endDomain) {
+            this.focusSvg.append('line')
+              .attr('class', 'winter-start-line')
+              .attr('x1', xScale(seasonStart))
+              .attr('y1', y)
+              .attr('x2', xScale(seasonStart))
+              .attr('y2', y + zoneHeight);
+          }
+
+          if (winter.season_end && seasonEnd >= startDomain && seasonEnd <= endDomain) {
+            this.focusSvg.append('line')
+              .attr('class', 'winter-end-line')
+              .attr('x1', xScale(seasonEnd))
+              .attr('y1', y)
+              .attr('x2', xScale(seasonEnd))
+              .attr('y2', y + zoneHeight);
+          }
+        } else if (winter.season_start || winter.winter_start) {
+          // Fallback to old format (solid block)
+          const winterStart = new Date(winter.season_start || winter.winter_start);
+          const winterEnd = winter.season_end || winter.winter_end
+            ? new Date(winter.season_end || winter.winter_end)
+            : new Date(this.dates[this.dates.length - 1]);
+
+          if (winterEnd < startDomain || winterStart > endDomain) return;
+
+          const x = Math.max(0, xScale(winterStart));
+          const endX = Math.min(width, xScale(winterEnd));
+          const barWidth = endX - x;
+
+          this.focusSvg.append('rect')
+            .attr('class', 'winter-period')
+            .attr('x', x)
+            .attr('y', y)
+            .attr('width', barWidth)
+            .attr('height', zoneHeight);
+
+          if (winterStart >= startDomain && winterStart <= endDomain) {
+            this.focusSvg.append('line')
+              .attr('class', 'winter-start-line')
+              .attr('x1', xScale(winterStart))
+              .attr('y1', y)
+              .attr('x2', xScale(winterStart))
+              .attr('y2', y + zoneHeight);
+          }
+
+          if ((winter.season_end || winter.winter_end) && winterEnd >= startDomain && winterEnd <= endDomain) {
+            this.focusSvg.append('line')
+              .attr('class', 'winter-end-line')
+              .attr('x1', xScale(winterEnd))
+              .attr('y1', y)
+              .attr('x2', xScale(winterEnd))
+              .attr('y2', y + zoneHeight);
+          }
         }
       });
     }
@@ -613,6 +725,64 @@ const TimelineController = {
     if (tooltip) {
       tooltip.style.display = 'none';
     }
+  },
+
+  /**
+   * Show tooltip for winter spell (cold or warm)
+   */
+  showWinterSpellTooltip(x, y, winter, spell, type) {
+    let tooltip = document.getElementById('anomaly-timeline-tooltip');
+
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'anomaly-timeline-tooltip';
+      tooltip.style.position = 'fixed';
+      tooltip.style.background = 'rgba(0, 0, 0, 0.9)';
+      tooltip.style.color = 'white';
+      tooltip.style.padding = '10px';
+      tooltip.style.borderRadius = '6px';
+      tooltip.style.fontSize = '12px';
+      tooltip.style.zIndex = '10000';
+      tooltip.style.pointerEvents = 'none';
+      tooltip.style.maxWidth = '300px';
+      tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+      document.body.appendChild(tooltip);
+    }
+
+    let html = '';
+
+    if (type === 'cold') {
+      html = `<div style="color: #6baed6;">
+        <strong>❄️ Pakkasjakso</strong><br>
+        <span style="font-size: 11px;">${winter.zone} • ${winter.season}</span>
+      </div>
+      <div style="margin-top: 8px;">
+        <strong>${spell.start}</strong> → <strong>${spell.end}</strong><br>
+        Kesto: ${spell.duration} päivää<br>
+        Kylmin: ${spell.min_temp}°C
+      </div>`;
+    } else {
+      html = `<div style="color: #fdae6b;">
+        <strong>☀️ Lämpökatko</strong><br>
+        <span style="font-size: 11px;">${winter.zone} • ${winter.season}</span>
+      </div>
+      <div style="margin-top: 8px;">
+        <strong>${spell.start}</strong> → <strong>${spell.end}</strong><br>
+        Kesto: ${spell.duration} päivää<br>
+        Lämpimin: ${spell.max_temp}°C
+      </div>`;
+    }
+
+    // Add season summary
+    html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444; font-size: 11px; color: #aaa;">
+      Kausi: ${winter.frost_days}/${winter.total_days} pakkaspäivää (${winter.coverage_pct}%)<br>
+      Katkonaisuus: ${(winter.fragmentation_index * 100).toFixed(0)}%
+    </div>`;
+
+    tooltip.innerHTML = html;
+    tooltip.style.left = (x + 15) + 'px';
+    tooltip.style.top = (y + 15) + 'px';
+    tooltip.style.display = 'block';
   },
 
   /**

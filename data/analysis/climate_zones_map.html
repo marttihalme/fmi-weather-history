@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suomen ilmastovyöhykkeet</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        .info-box {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        .info-box h2 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .zone-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .zone-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 3px;
+            border: 1px solid #999;
+        }
+        .zone-name {
+            flex: 1;
+        }
+        .zone-lat {
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info-box">
+        <h2>Ilmastovyöhykkeet</h2>
+        <div class="zone-item">
+            <div class="zone-color" style="background-color: rgba(255, 69, 0, 0.3);"></div>
+            <div>
+                <div class="zone-name"><strong>Lappi</strong></div>
+                <div class="zone-lat">≥ 66.0°N (napapiiri)</div>
+            </div>
+        </div>
+        <div class="zone-item">
+            <div class="zone-color" style="background-color: rgba(255, 165, 0, 0.3);"></div>
+            <div>
+                <div class="zone-name"><strong>Pohjois-Suomi</strong></div>
+                <div class="zone-lat">64.0° - 66.0°N</div>
+            </div>
+        </div>
+        <div class="zone-item">
+            <div class="zone-color" style="background-color: rgba(255, 215, 0, 0.3);"></div>
+            <div>
+                <div class="zone-name"><strong>Keski-Suomi</strong></div>
+                <div class="zone-lat">61.5° - 64.0°N</div>
+            </div>
+        </div>
+        <div class="zone-item">
+            <div class="zone-color" style="background-color: rgba(50, 205, 50, 0.3);"></div>
+            <div>
+                <div class="zone-name"><strong>Etelä-Suomi</strong></div>
+                <div class="zone-lat">&lt; 61.5°N</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Alusta kartta keskitettynä Suomeen
+        const map = L.map('map').setView([64.5, 26.0], 5);
+
+        // Lisää OpenStreetMap taustakartta
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        // Määrittele vyöhykkeet (leveysasteviivat Suomen pituusasteiden välillä)
+        const zones = [
+            {
+                name: 'Etelä-Suomi',
+                color: 'rgba(50, 205, 50, 0.3)',
+                borderColor: 'rgba(50, 205, 50, 0.8)',
+                latMin: 59.5,  // Suomen eteläraja
+                latMax: 61.5
+            },
+            {
+                name: 'Keski-Suomi',
+                color: 'rgba(255, 215, 0, 0.3)',
+                borderColor: 'rgba(255, 215, 0, 0.8)',
+                latMin: 61.5,
+                latMax: 64.0
+            },
+            {
+                name: 'Pohjois-Suomi',
+                color: 'rgba(255, 165, 0, 0.3)',
+                borderColor: 'rgba(255, 165, 0, 0.8)',
+                latMin: 64.0,
+                latMax: 66.0
+            },
+            {
+                name: 'Lappi',
+                color: 'rgba(255, 69, 0, 0.3)',
+                borderColor: 'rgba(255, 69, 0, 0.8)',
+                latMin: 66.0,
+                latMax: 70.1  // Suomen pohjoisraja
+            }
+        ];
+
+        // Piirrä vyöhykkeet kartalle
+        zones.forEach(zone => {
+            // Luo suorakaide leveysasteiden välille
+            const bounds = [
+                [zone.latMin, 19.0],  // Lounas (Suomen länsirajalla)
+                [zone.latMax, 31.6]   // Koillis (Suomen itärajalla)
+            ];
+
+            const rectangle = L.rectangle(bounds, {
+                color: zone.borderColor,
+                fillColor: zone.color,
+                fillOpacity: 0.4,
+                weight: 2
+            }).addTo(map);
+
+            // Lisää popup-teksti
+            rectangle.bindPopup(`
+                <strong>${zone.name}</strong><br>
+                Leveysaste: ${zone.latMin}° - ${zone.latMax}°N
+            `);
+        });
+
+        // Lisää leveysasteviivat (parallels) selkeyden vuoksi
+        [61.5, 64.0, 66.0].forEach(lat => {
+            L.polyline(
+                [[lat, 19.0], [lat, 31.6]],
+                {
+                    color: '#333',
+                    weight: 2,
+                    dashArray: '5, 10',
+                    opacity: 0.7
+                }
+            ).addTo(map).bindPopup(`Leveysaste: ${lat}°N`);
+        });
+
+        // Lisää napapiirin merkintä
+        L.polyline(
+            [[66.0, 19.0], [66.0, 31.6]],
+            {
+                color: '#ff0000',
+                weight: 3,
+                dashArray: '10, 5',
+                opacity: 0.8
+            }
+        ).addTo(map).bindPopup('<strong>Napapiiri (66.0°N)</strong>');
+
+        // Lisää tekstimerkinnät kartalle
+        const labels = [
+            { lat: 60.5, lon: 25, text: 'ETELÄ-SUOMI' },
+            { lat: 62.7, lon: 25, text: 'KESKI-SUOMI' },
+            { lat: 65.0, lon: 25, text: 'POHJOIS-SUOMI' },
+            { lat: 68.0, lon: 25, text: 'LAPPI' }
+        ];
+
+        labels.forEach(label => {
+            const icon = L.divIcon({
+                className: 'zone-label',
+                html: `<div style="
+                    background: rgba(255,255,255,0.9);
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    font-weight: bold;
+                    font-size: 12px;
+                    color: #333;
+                    white-space: nowrap;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                ">${label.text}</div>`,
+                iconSize: [120, 30],
+                iconAnchor: [60, 15]
+            });
+
+            L.marker([label.lat, label.lon], { icon: icon }).addTo(map);
+        });
+    </script>
+</body>
+</html>

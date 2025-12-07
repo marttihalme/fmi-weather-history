@@ -3,9 +3,9 @@
 Pre-compute IDW interpolation grids for smooth heatmap rendering.
 Generates grids for every 7th day to reduce file size (~208 grids total).
 
-Input:  ../data/daily_zone_summary.json
-        ../weather_data_2022_2025_all.csv (for station-level data)
-Output: ../data/precomputed_grids.json (~1.5 MB gzipped)
+# Input:  ../data/daily_zone_summary.json
+#         ../data/raw/weather_data_2022_2025_all.csv (for station-level data)
+# Output: ../data/precomputed_grids.json (~1.5 MB gzipped)
 """
 
 import pandas as pd
@@ -106,7 +106,7 @@ print(f"   Longitude range: {LON_MIN}° to {LON_MAX}°")
 
 # Load station data
 print("\n2. Loading weather data...")
-df = pd.read_csv(BASE_DIR / "weather_data_2022_2025_all.csv")
+df = pd.read_csv(BASE_DIR / "data" / "raw" / "weather_data_2022_2025_all.csv")
 df['date'] = pd.to_datetime(df['date'])
 
 print(f"   Loaded {len(df):,} observations")

@@ -3,7 +3,7 @@
 Data preprocessing script for Finnish Weather Visualization System.
 Aggregates 387k weather observations into optimized JSON format.
 
-Input:  ../weather_data_2022_2025_all.csv (37 MB)
+Input:  ../data/raw/weather_data_2022_2025_all.csv (37 MB)
 Output: ../data/daily_zone_summary.json (~400 KB gzipped)
         ../data/station_locations.json (~50 KB gzipped)
         ../data/anomalies.json (~25 KB gzipped)
@@ -26,7 +26,7 @@ print("=" * 50)
 
 # 1. Load main weather data
 print("\n1. Loading weather data (387k rows)...")
-df = pd.read_csv(BASE_DIR / "weather_data_2022_2025_all.csv")
+df = pd.read_csv(BASE_DIR / "data" / "raw" / "weather_data_2022_2025_all.csv")
 print(f"   Loaded {len(df):,} observations")
 print(f"   Date range: {df['date'].min()} to {df['date'].max()}")
 print(f"   Stations: {df['station_name'].nunique()}")
@@ -123,7 +123,7 @@ print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} K
 
 # 4. Process anomalies
 print("\n4. Processing weather anomalies...")
-anomalies = pd.read_csv(BASE_DIR / "weather_anomalies.csv")
+anomalies = pd.read_csv(BASE_DIR / "data" / "analysis" / "weather_anomalies.csv")
 print(f"   Loaded {len(anomalies)} anomaly events")
 
 # Add geospatial information
@@ -152,21 +152,30 @@ with gzip.open(output_file_gz, 'wt') as f:
     json.dump(anomaly_data, f)
 print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
 
-# 5. Process winter progression
+# 5. Process winter progression (detailed with cold/warm spells)
 print("\n5. Processing winter progression data...")
-winter = pd.read_csv(BASE_DIR / "winter_start_analysis.csv")
-print(f"   Loaded {len(winter)} winter season records")
 
-# Convert dates to strings
-winter['winter_start'] = pd.to_datetime(winter['winter_start']).dt.strftime('%Y-%m-%d')
-# Handle winter_end which may have NaN values
-winter['winter_end'] = pd.to_datetime(winter['winter_end'], errors='coerce').dt.strftime('%Y-%m-%d')
-winter['winter_end'] = winter['winter_end'].where(winter['winter_end'].notna(), None)
+# Load detailed winter analysis JSON (includes cold_spells and warm_spells)
+winter_detailed_file = BASE_DIR / "data" / "analysis" / "winter_analysis_detailed.json"
+if winter_detailed_file.exists():
+    with open(winter_detailed_file, 'r', encoding='utf-8') as f:
+        winter_data = json.load(f)
+    print(f"   Loaded {len(winter_data)} winter season records (detailed)")
 
-# Replace all NaN with None (which becomes null in JSON)
-winter = winter.replace({float('nan'): None})
-
-winter_data = winter.to_dict(orient='records')
+    # Count total spells
+    total_cold_spells = sum(len(w.get('cold_spells', [])) for w in winter_data)
+    total_warm_spells = sum(len(w.get('warm_spells', [])) for w in winter_data)
+    print(f"   Total cold spells: {total_cold_spells}")
+    print(f"   Total warm interruptions: {total_warm_spells}")
+else:
+    # Fallback to CSV if detailed JSON doesn't exist
+    print("   Warning: winter_analysis_detailed.json not found, using CSV fallback")
+    winter = pd.read_csv(BASE_DIR / "winter_start_analysis.csv")
+    winter['season_start'] = pd.to_datetime(winter['season_start']).dt.strftime('%Y-%m-%d')
+    winter['season_end'] = pd.to_datetime(winter['season_end'], errors='coerce').dt.strftime('%Y-%m-%d')
+    winter['season_end'] = winter['season_end'].where(winter['season_end'].notna(), None)
+    winter = winter.replace({float('nan'): None})
+    winter_data = winter.to_dict(orient='records')
 
 output_file = DATA_DIR / "winter_starts.json"
 with open(output_file, 'w') as f:

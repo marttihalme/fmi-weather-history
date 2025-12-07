@@ -52,15 +52,15 @@ const ColorScales = {
         snow_depth: {
             name: 'Snow Depth',
             unit: 'cm',
-            range: [0, 150],
+            range: [0, 100],
             colors: [
-                { value: 0, color: '#f7fcf5' },
-                { value: 10, color: '#e5f5e0' },
-                { value: 30, color: '#c7e9c0' },
-                { value: 50, color: '#a1d99b' },
-                { value: 80, color: '#74c476' },
-                { value: 100, color: '#41ab5d' },
-                { value: 150, color: '#238b45' }
+                { value: 0, color: '#f7fbff' },
+                { value: 10, color: '#deebf7' },
+                { value: 25, color: '#c6dbef' },
+                { value: 40, color: '#9ecae1' },
+                { value: 60, color: '#6baed6' },
+                { value: 80, color: '#3182bd' },
+                { value: 100, color: '#08519c' }
             ],
             type: 'sequential'
         },
@@ -78,21 +78,6 @@ const ColorScales = {
                 { value: 40, color: '#08519c' }
             ],
             type: 'sequential'
-        },
-        ground_temp_min: {
-            name: 'Ground Minimum Temperature',
-            unit: '°C',
-            range: [-50, 20],
-            colors: [
-                { value: -50, color: '#54278f' },
-                { value: -30, color: '#756bb1' },
-                { value: -10, color: '#9e9ac8' },
-                { value: 0, color: '#bcbddc' },
-                { value: 5, color: '#fee0d2' },
-                { value: 10, color: '#fc9272' },
-                { value: 20, color: '#de6e00' }
-            ],
-            type: 'diverging'
         }
     },
 
