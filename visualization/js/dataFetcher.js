@@ -4,7 +4,7 @@
  */
 
 const DataFetcher = {
-  baseURL: '/api',
+  baseURL: "/api",
   data: null,
   isLoading: false,
 
@@ -12,7 +12,7 @@ const DataFetcher = {
    * Initialize data fetcher
    * @param {string} baseURL - API base URL
    */
-  initialize(baseURL = '/api') {
+  initialize(baseURL = "/api") {
     this.baseURL = baseURL;
   },
 
@@ -30,7 +30,7 @@ const DataFetcher = {
       let url = `${this.baseURL}/weather?start=${startDate}&end=${endDate}`;
 
       if (stations && Array.isArray(stations) && stations.length > 0) {
-        url += `&stations=${stations.join(',')}`;
+        url += `&stations=${stations.join(",")}`;
       }
 
       const response = await fetch(url);
@@ -44,7 +44,7 @@ const DataFetcher = {
 
       return this.data;
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error("Error fetching data:", error);
       this.isLoading = false;
       throw error;
     }
@@ -64,7 +64,7 @@ const DataFetcher = {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching stations:', error);
+      console.error("Error fetching stations:", error);
       throw error;
     }
   },
@@ -83,7 +83,7 @@ const DataFetcher = {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching available dates:', error);
+      console.error("Error fetching available dates:", error);
       throw error;
     }
   },
@@ -102,7 +102,7 @@ const DataFetcher = {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching metrics:', error);
+      console.error("Error fetching metrics:", error);
       throw error;
     }
   },
@@ -125,7 +125,7 @@ const DataFetcher = {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching baseline data:', error);
+      console.error("Error fetching baseline data:", error);
       throw error;
     }
   },
@@ -148,7 +148,32 @@ const DataFetcher = {
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching winter data:', error);
+      console.error("Error fetching winter data:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Refresh data for the last 30 days
+   * @returns {Promise} Promise resolving to success
+   */
+  async refreshLast30Days() {
+    this.isLoading = true;
+    try {
+      const response = await fetch(`${this.baseURL}/refresh-30`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to refresh data: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      this.isLoading = false;
+      return result;
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      this.isLoading = false;
       throw error;
     }
   },
@@ -183,16 +208,16 @@ const DataFetcher = {
    */
   async uploadFile(file) {
     if (!file) {
-      throw new Error('No file provided');
+      throw new Error("No file provided");
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     try {
       const response = await fetch(`${this.baseURL}/upload`, {
-        method: 'POST',
-        body: formData
+        method: "POST",
+        body: formData,
       });
 
       if (!response.ok) {
@@ -203,7 +228,7 @@ const DataFetcher = {
       this.data = data;
       return data;
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error("Error uploading file:", error);
       throw error;
     }
   },
@@ -214,20 +239,20 @@ const DataFetcher = {
    * @returns {Array} Parsed data
    */
   parseCSV(csvContent) {
-    const lines = csvContent.trim().split('\n');
+    const lines = csvContent.trim().split("\n");
     if (lines.length < 2) {
-      throw new Error('CSV file must have header and data rows');
+      throw new Error("CSV file must have header and data rows");
     }
 
-    const headers = lines[0].split(',').map(h => h.trim());
+    const headers = lines[0].split(",").map((h) => h.trim());
     const data = [];
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',');
+      const values = lines[i].split(",");
       const record = {};
 
       headers.forEach((header, index) => {
-        const value = values[index] ? values[index].trim() : '';
+        const value = values[index] ? values[index].trim() : "";
         // Try to parse as number
         record[header] = isNaN(value) ? value : parseFloat(value);
       });
@@ -237,10 +262,10 @@ const DataFetcher = {
 
     this.data = data;
     return data;
-  }
+  },
 };
 
 // Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
+if (typeof module !== "undefined" && module.exports) {
   module.exports = DataFetcher;
 }

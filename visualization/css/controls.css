@@ -119,12 +119,21 @@
     gap: 0.3rem;
 }
 
-.winter-period-icon {
+.cold-spell-icon {
     display: inline-block;
     width: 15px;
-    height: 3px;
-    background: rgba(173, 216, 230, 0.5);
-    border: 1px solid #4a90e2;
+    height: 10px;
+    background: rgba(33, 113, 181, 0.5);
+    border: 1px solid rgba(33, 113, 181, 0.8);
+    vertical-align: middle;
+}
+
+.warm-spell-icon {
+    display: inline-block;
+    width: 15px;
+    height: 6px;
+    background: rgba(253, 174, 107, 0.6);
+    border: 1px solid rgba(253, 174, 107, 0.9);
     vertical-align: middle;
 }
 
@@ -393,4 +402,219 @@
     text-align: right;
     font-size: 0.9rem;
     color: #666;
+}
+
+/* Compare Years Tab Styles */
+#compare-years-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f5f5f5;
+}
+
+#compare-controls {
+    background: white;
+    padding: 1rem 2rem;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    flex-wrap: wrap;
+}
+
+.compare-legend-inline {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.75rem;
+    color: #666;
+    margin-left: auto;
+}
+
+.compare-legend-inline .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+#years-timeline-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    background: white;
+}
+
+#years-timeline {
+    width: 100%;
+}
+
+/* Year row styling */
+.year-row {
+    display: flex;
+    border-bottom: 1px solid #eee;
+    min-height: 28px;
+}
+
+.year-row:last-child {
+    border-bottom: none;
+}
+
+.year-row:hover {
+    background: #fafafa;
+}
+
+.year-label {
+    width: 80px;
+    min-width: 80px;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2c3e50;
+    background: #f8f9fa;
+    border-right: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+}
+
+.year-timeline-chart {
+    flex: 1;
+    height: 28px;
+    position: relative;
+}
+
+/* Month grid lines */
+.month-grid-line {
+    stroke: #eee;
+    stroke-width: 1;
+}
+
+.month-label {
+    font-size: 9px;
+    fill: #999;
+}
+
+/* Header row */
+.year-row.header {
+    background: #f0f0f0;
+    border-bottom: 2px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.year-row.header .year-label {
+    background: #e9ecef;
+    font-weight: 700;
+}
+
+/* Zone rows within year (when showing all zones) */
+.zone-row {
+    display: flex;
+    min-height: 20px;
+}
+
+.zone-label-small {
+    width: 100px;
+    min-width: 100px;
+    padding: 2px 8px 2px 20px;
+    font-size: 0.7rem;
+    color: #666;
+    background: #fafafa;
+    border-right: 1px solid #eee;
+    display: flex;
+    align-items: center;
+}
+
+.zone-timeline-chart {
+    flex: 1;
+    height: 20px;
+    position: relative;
+}
+
+/* Alternating year backgrounds */
+.year-group:nth-child(even) {
+    background: #fafafa;
+}
+
+.year-group:nth-child(odd) {
+    background: white;
+}
+
+/* Year group header */
+.year-group-header {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    background: #f0f4f8;
+    min-height: 24px;
+}
+
+.year-group-header .year-label {
+    background: #e3e9ef;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* Season bars */
+.season-bar {
+    opacity: 0.7;
+}
+
+.season-bar.cold-spell {
+    fill: rgba(33, 113, 181, 0.6);
+}
+
+.season-bar.warm-spell {
+    fill: rgba(253, 174, 107, 0.5);
+}
+
+/* Winter markers */
+.winter-marker {
+    stroke-width: 2;
+    stroke-dasharray: 3, 2;
+}
+
+.winter-marker.start {
+    stroke: #4a90e2;
+}
+
+.winter-marker.end {
+    stroke: #e27d60;
+}
+
+/* Anomaly markers in compare view */
+.compare-anomaly-bar {
+    opacity: 0.85;
+    cursor: pointer;
+}
+
+.compare-anomaly-bar:hover {
+    opacity: 1;
+}
+
+/* Anomaly icons for legend */
+.anomaly-icon {
+    display: inline-block;
+    width: 12px;
+    height: 8px;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
+.anomaly-icon.extreme-cold {
+    background: #2171b5;
+}
+
+.anomaly-icon.cold-snap {
+    background: #6baed6;
+}
+
+.anomaly-icon.heat-wave {
+    background: #de2d26;
+}
+
+.anomaly-icon.return-winter {
+    background: #756bb1;
+}
+
+.anomaly-icon.temp-jump {
+    background: #fdae6b;
 }

@@ -1,274 +1,373 @@
 <!DOCTYPE html>
 <html lang="fi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Finnish Weather Visualization System</title>
 
     <!-- Application CSS -->
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/controls.css">
-    <link rel="stylesheet" href="css/map.css">
-    <link rel="stylesheet" href="css/table.css">
-</head>
-<body>
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/controls.css" />
+    <link rel="stylesheet" href="css/map.css" />
+    <link rel="stylesheet" href="css/table.css" />
+  </head>
+  <body>
     <div id="app-container">
-        <!-- Header -->
-        <header id="app-header">
-            <h1>Finnish Weather Visualization</h1>
-            <nav id="tabs">
-                <button class="tab-button active" data-tab="visualization">Visualization</button>
-                <button class="tab-button" data-tab="data-management">Data Management</button>
-            </nav>
-        </header>
+      <!-- Header -->
+      <header id="app-header">
+        <h1>Finnish Weather Visualization</h1>
+        <nav id="tabs">
+          <button class="tab-button active" data-tab="exploration">
+            Exploration
+          </button>
+          <button class="tab-button" data-tab="compare-years">
+            Compare Years
+          </button>
+          <button class="tab-button" data-tab="data-management">
+            Data Management
+          </button>
+        </nav>
+      </header>
 
-        <!-- Tab Content: Visualization -->
-        <div id="visualization-tab" class="tab-content active">
-            <!-- Control Panel -->
-            <div id="control-panel">
-                <div class="control-group">
-                    <label for="metric-selector">Metric:</label>
-                    <select id="metric-selector">
-                        <option value="temp_mean">Air Temperature (Mean)</option>
-                        <option value="temp_min">Minimum Temperature</option>
-                        <option value="temp_max">Maximum Temperature</option>
-                        <option value="snow_depth">Snow Depth</option>
-                        <option value="precipitation">Precipitation Amount</option>
-                    </select>
-                </div>
+      <!-- Tab Content: Exploration -->
+      <div id="exploration-tab" class="tab-content active">
+        <!-- Control Panel -->
+        <div id="control-panel">
+          <div class="control-group">
+            <label for="metric-selector">Metric:</label>
+            <select id="metric-selector">
+              <option value="temp_mean">Air Temperature (Mean)</option>
+              <option value="temp_min">Minimum Temperature</option>
+              <option value="temp_max">Maximum Temperature</option>
+              <option value="snow_depth">Snow Depth</option>
+              <option value="precipitation">Precipitation Amount</option>
+            </select>
+          </div>
 
-                <div class="control-group">
-                    <label for="heatmap-mode">Heatmap Mode:</label>
-                    <select id="heatmap-mode">
-                        <option value="stations">Stations (Points)</option>
-                        <option value="interpolated">Interpolated (Smooth)</option>
-                    </select>
-                </div>
-
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="toggle-anomalies" checked>
-                        Show Anomalies on Map
-                    </label>
-                    <label>
-                        <input type="checkbox" id="toggle-anomaly-timeline" checked>
-                        Show Anomaly Timeline
-                    </label>
-                    <label>
-                        <input type="checkbox" id="toggle-winter" checked>
-                        Show Winter Progression
-                    </label>
-                    <label>
-                        <input type="checkbox" id="toggle-table">
-                        Show Data Table
-                    </label>
-                </div>
-            </div>
-
-            <!-- Main Content Area -->
-            <div id="main-content">
-                <!-- Legend Sidebar -->
-                <aside id="legend-sidebar">
-                    <div id="legend-content">
-                        <h3>Legend</h3>
-
-                        <!-- Color Scale -->
-                        <div class="legend-section">
-                            <h4 id="legend-metric-title">Air Temperature</h4>
-                            <canvas id="color-scale-canvas" width="200" height="30"></canvas>
-                            <div id="color-scale-labels">
-                                <span id="scale-min">-40°C</span>
-                                <span id="scale-max">+35°C</span>
-                            </div>
-                        </div>
-
-                        <!-- Anomalies Legend -->
-                        <div class="legend-section">
-                            <h4>Weather Anomalies</h4>
-                            <div class="anomaly-legend-item">
-                                <span class="anomaly-color" style="background: #2171b5;"></span>
-                                <span>Extreme Cold (≤-25°C)</span>
-                            </div>
-                            <div class="anomaly-legend-item">
-                                <span class="anomaly-color" style="background: #6baed6;"></span>
-                                <span>Cold Snap (3+ days)</span>
-                            </div>
-                            <div class="anomaly-legend-item">
-                                <span class="anomaly-color" style="background: #de2d26;"></span>
-                                <span>Heat Wave (3+ days)</span>
-                            </div>
-                            <div class="anomaly-legend-item">
-                                <span class="anomaly-color" style="background: #756bb1;"></span>
-                                <span>Return Winter</span>
-                            </div>
-                            <div class="anomaly-legend-item">
-                                <span class="anomaly-color" style="background: #fdae6b;"></span>
-                                <span>Temperature Jump (±15°C)</span>
-                            </div>
-                        </div>
-
-                        <!-- Current Date Info -->
-                        <div class="legend-section">
-                            <h4>Current Date</h4>
-                            <div id="current-date-display">2022-01-01</div>
-                            <div id="current-stats">
-                                <!-- Populated dynamically -->
-                            </div>
-                        </div>
-
-                        <!-- Active Anomalies -->
-                        <div class="legend-section">
-                            <h4>Active Anomalies</h4>
-                            <div id="active-anomalies-list">
-                                <p style="color: #999; font-size: 12px;">No anomalies on this date</p>
-                            </div>
-                        </div>
-                    </div>
-                </aside>
-
-                <!-- Map Container -->
-                <div id="map-container">
-                    <div id="map"></div>
-                    <div id="loading-indicator" class="hidden">
-                        <div class="spinner"></div>
-                        <span>Loading data...</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Timeline Controls -->
-            <div id="timeline-container">
-                <!-- Anomaly Timeline with Brush & Zoom -->
-                <div id="anomaly-timeline" class="anomaly-timeline-visible">
-                    <div class="anomaly-timeline-header">
-                        <h4>Anomaly Timeline</h4>
-                        <span class="anomaly-legend-inline">
-                            <span class="legend-item"><span class="winter-period-icon"></span> Winter period</span>
-                            <span class="legend-item"><span class="winter-start-icon"></span> Winter start</span>
-                            <span class="legend-item"><span class="winter-end-icon"></span> Winter end</span>
-                        </span>
-                        <span class="brush-hint">Drag on the overview below to select time range</span>
-                    </div>
-                    <!-- Detail (Focus) View - shows selected range in detail -->
-                    <div id="anomaly-focus" class="anomaly-chart"></div>
-                    <!-- Overview (Context) View - shows full timeline with brush selector -->
-                    <div id="anomaly-context" class="anomaly-chart"></div>
-                </div>
-
-                <!-- Date Slider -->
-                <div id="date-slider-container">
-                    <div id="date-slider-labels">
-                        <span id="date-min">2022-01-01</span>
-                        <span id="date-current">2022-01-01</span>
-                        <span id="date-max">2025-12-31</span>
-                    </div>
-                    <input type="range" id="date-slider" min="0" max="100" value="0" step="1">
-                </div>
-            </div>
-
-            <!-- Data Table (toggleable) -->
-            <div id="data-table-container" class="hidden">
-                <div id="data-table"></div>
-            </div>
+          <div class="control-group">
+            <label>
+              <input type="checkbox" id="toggle-anomaly-timeline" checked />
+              Show Timeline
+            </label>
+            <label>
+              <input type="checkbox" id="toggle-winter" checked />
+              Show Winter Progression
+            </label>
+            <label>
+              <input type="checkbox" id="toggle-table" />
+              Show Data Table
+            </label>
+          </div>
         </div>
 
-        <!-- Tab Content: Data Management -->
-        <div id="data-management-tab" class="tab-content">
-            <div id="data-fetcher">
-                <h2>Historical Data Fetcher</h2>
+        <!-- Main Content Area -->
+        <div id="main-content">
+          <!-- Legend Sidebar -->
+          <aside id="legend-sidebar">
+            <div id="legend-content">
+              <h3>Legend</h3>
 
-                <div class="fetcher-controls">
-                    <div class="control-group">
-                        <label>Fetch Mode:</label>
-                        <label>
-                            <input type="radio" name="fetch-mode" value="date-range" checked>
-                            Date Range
-                        </label>
-                        <label>
-                            <input type="radio" name="fetch-mode" value="refresh-latest">
-                            Refresh Latest
-                        </label>
-                    </div>
-
-                    <div class="control-group" id="date-range-controls">
-                        <label for="start-date">From:</label>
-                        <input type="date" id="start-date" value="2015-01-01">
-                        <label for="end-date">To:</label>
-                        <input type="date" id="end-date" value="2021-12-31">
-                    </div>
-
-                    <div class="control-group">
-                        <button id="btn-start-fetch" class="primary-button">Start Fetch</button>
-                        <button id="btn-pause-fetch" class="secondary-button" disabled>Pause</button>
-                        <button id="btn-resume-fetch" class="secondary-button" disabled>Resume</button>
-                        <button id="btn-cancel-fetch" class="secondary-button" disabled>Cancel</button>
-                    </div>
+              <!-- Color Scale -->
+              <div class="legend-section">
+                <h4 id="legend-metric-title">Air Temperature</h4>
+                <canvas
+                  id="color-scale-canvas"
+                  width="200"
+                  height="30"
+                ></canvas>
+                <div id="color-scale-labels">
+                  <span id="scale-min">-40°C</span>
+                  <span id="scale-max">+35°C</span>
                 </div>
+              </div>
 
-                <div id="fetch-status">
-                    <h3>Status: <span id="status-text">Idle</span></h3>
+              <!-- Anomalies Legend -->
+              <div class="legend-section">
+                <h4>Weather Anomalies</h4>
+                <div class="anomaly-legend-item">
+                  <span
+                    class="anomaly-color"
+                    style="background: #2171b5"
+                  ></span>
+                  <span>Extreme Cold (≤-25°C)</span>
                 </div>
+                <div class="anomaly-legend-item">
+                  <span
+                    class="anomaly-color"
+                    style="background: #6baed6"
+                  ></span>
+                  <span>Cold Snap (3+ days)</span>
+                </div>
+                <div class="anomaly-legend-item">
+                  <span
+                    class="anomaly-color"
+                    style="background: #de2d26"
+                  ></span>
+                  <span>Heat Wave (3+ days)</span>
+                </div>
+                <div class="anomaly-legend-item">
+                  <span
+                    class="anomaly-color"
+                    style="background: #756bb1"
+                  ></span>
+                  <span>Return Winter</span>
+                </div>
+                <div class="anomaly-legend-item">
+                  <span
+                    class="anomaly-color"
+                    style="background: #fdae6b"
+                  ></span>
+                  <span>Temperature Jump (±15°C)</span>
+                </div>
+              </div>
 
-                <div id="fetch-progress">
-                    <h3>Overall Progress</h3>
-                    <div class="progress-bar">
-                        <div id="overall-progress-fill" class="progress-fill" style="width: 0%;"></div>
-                    </div>
-                    <div id="overall-progress-text">0% (0/0 days)</div>
+              <!-- Current Date Info -->
+              <div class="legend-section">
+                <h4>Current Date</h4>
+                <div id="current-date-display">2022-01-01</div>
+                <div id="current-stats">
+                  <!-- Populated dynamically -->
                 </div>
-
-                <div id="current-activity">
-                    <h3>Current Activity</h3>
-                    <div id="quarter-progress">
-                        <label>Quarter:</label>
-                        <span id="current-quarter">-</span>
-                        <div class="progress-bar small">
-                            <div id="quarter-progress-fill" class="progress-fill" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                    <div id="zone-progress">
-                        <label>Zone:</label>
-                        <span id="current-zone">-</span>
-                        <div class="progress-bar small">
-                            <div id="zone-progress-fill" class="progress-fill" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="zone-progress-list">
-                    <h3>By Zone Progress</h3>
-                    <div id="zone-list">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-
-                <div id="fetch-statistics">
-                    <h3>Statistics</h3>
-                    <ul id="stats-list">
-                        <li>Stations found: <span id="stat-stations">0</span></li>
-                        <li>Total observations: <span id="stat-observations">0</span></li>
-                        <li>API calls made: <span id="stat-api-calls">0 / 0</span></li>
-                        <li>Rate limit delays: <span id="stat-rate-limits">0</span></li>
-                        <li>Elapsed: <span id="stat-elapsed">0s</span></li>
-                    </ul>
-                </div>
-
-                <div id="activity-log">
-                    <h3>Activity Log</h3>
-                    <div id="log-container">
-                        <!-- Populated dynamically -->
-                    </div>
-                </div>
-
-                <div id="data-coverage">
-                    <h3>Data Coverage</h3>
-                    <div id="coverage-info">
-                        <p>Current: <span id="coverage-range">-</span></p>
-                        <p>Missing: <span id="coverage-gaps">-</span></p>
-                    </div>
-                </div>
+              </div>
             </div>
+          </aside>
+
+          <!-- Map Container -->
+          <div id="map-container">
+            <div id="map"></div>
+            <div id="loading-indicator" class="hidden">
+              <div class="spinner"></div>
+              <span>Loading data...</span>
+            </div>
+          </div>
+
+          <!-- Info Sidebar (Right) -->
+          <aside id="info-sidebar">
+            <div id="info-content">
+              <h3>Active Anomalies</h3>
+              <div id="active-anomalies-list-right">
+                <p class="no-anomalies-message">No anomalies on this date</p>
+              </div>
+            </div>
+          </aside>
         </div>
+
+        <!-- Timeline Controls -->
+        <div id="timeline-container">
+          <!-- Timeline with Brush & Zoom -->
+          <div id="anomaly-timeline" class="anomaly-timeline-visible">
+            <div class="anomaly-timeline-header">
+              <h4>Timeline</h4>
+              <span class="anomaly-legend-inline">
+                <span class="legend-item"
+                  ><span class="cold-spell-icon"></span> Pakkasjakso</span
+                >
+                <span class="legend-item"
+                  ><span class="warm-spell-icon"></span> Lämpökatko</span
+                >
+                <span class="legend-item"
+                  ><span class="winter-start-icon"></span> Kauden alku</span
+                >
+                <span class="legend-item"
+                  ><span class="winter-end-icon"></span> Kauden loppu</span
+                >
+              </span>
+              <span class="brush-hint"
+                >Drag on the overview below to select time range</span
+              >
+            </div>
+            <!-- Detail (Focus) View - shows selected range in detail -->
+            <div id="anomaly-focus" class="anomaly-chart"></div>
+            <!-- Overview (Context) View - shows full timeline with brush selector -->
+            <div id="anomaly-context" class="anomaly-chart"></div>
+          </div>
+
+          <!-- Date Slider -->
+          <div id="date-slider-container">
+            <div id="date-slider-labels">
+              <span id="date-min">2022-01-01</span>
+              <span id="date-current">2022-01-01</span>
+              <span id="date-max">2025-12-31</span>
+            </div>
+            <input
+              type="range"
+              id="date-slider"
+              min="0"
+              max="100"
+              value="0"
+              step="1"
+            />
+          </div>
+        </div>
+
+        <!-- Data Table (toggleable) -->
+        <div id="data-table-container" class="hidden">
+          <div id="data-table"></div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Compare Years -->
+      <div id="compare-years-tab" class="tab-content">
+        <div id="compare-years-container">
+          <!-- Controls -->
+          <div id="compare-controls">
+            <div class="control-group">
+              <label for="zone-selector">Zone:</label>
+              <select id="zone-selector">
+                <option value="all">All Zones</option>
+                <option value="Etelä-Suomi">Etelä-Suomi</option>
+                <option value="Keski-Suomi">Keski-Suomi</option>
+                <option value="Pohjois-Suomi">Pohjois-Suomi</option>
+                <option value="Lappi">Lappi</option>
+              </select>
+            </div>
+            <span class="compare-legend-inline">
+              <span class="legend-item"><span class="cold-spell-icon"></span> Pakkasjakso</span>
+              <span class="legend-item"><span class="warm-spell-icon"></span> Lämpökatko</span>
+              <span class="legend-item"><span class="winter-start-icon"></span> Talven alku</span>
+              <span class="legend-item"><span class="winter-end-icon"></span> Talven loppu</span>
+              <span class="legend-item"><span class="anomaly-icon extreme-cold"></span> Äärimmäinen kylmyys</span>
+              <span class="legend-item"><span class="anomaly-icon cold-snap"></span> Ankara pakkasjakso</span>
+              <span class="legend-item"><span class="anomaly-icon heat-wave"></span> Hellejakso</span>
+              <span class="legend-item"><span class="anomaly-icon return-winter"></span> Takatalvi</span>
+              <span class="legend-item"><span class="anomaly-icon temp-jump"></span> Lämpöhyppy</span>
+            </span>
+          </div>
+
+          <!-- Stacked Years Timeline -->
+          <div id="years-timeline-container">
+            <div id="years-timeline">
+              <!-- Populated by JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Data Management -->
+      <div id="data-management-tab" class="tab-content">
+        <div id="data-fetcher">
+          <h2>Historical Data Fetcher</h2>
+
+          <div class="fetcher-controls">
+            <div class="control-group">
+              <label>Fetch Mode:</label>
+              <label>
+                <input
+                  type="radio"
+                  name="fetch-mode"
+                  value="date-range"
+                  checked
+                />
+                Date Range
+              </label>
+              <label>
+                <input type="radio" name="fetch-mode" value="refresh-latest" />
+                Refresh Latest
+              </label>
+            </div>
+
+            <div class="control-group" id="date-range-controls">
+              <label for="start-date">From:</label>
+              <input type="date" id="start-date" value="2015-01-01" />
+              <label for="end-date">To:</label>
+              <input type="date" id="end-date" value="2021-12-31" />
+            </div>
+
+            <div class="control-group">
+              <button id="btn-start-fetch" class="primary-button">
+                Start Fetch
+              </button>
+              <button id="btn-refresh-30" class="primary-button">
+                Refresh last 30 days
+              </button>
+              <button id="btn-pause-fetch" class="secondary-button" disabled>
+                Pause
+              </button>
+              <button id="btn-resume-fetch" class="secondary-button" disabled>
+                Resume
+              </button>
+              <button id="btn-cancel-fetch" class="secondary-button" disabled>
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <div id="fetch-status">
+            <h3>Status: <span id="status-text">Idle</span></h3>
+          </div>
+
+          <div id="fetch-progress">
+            <h3>Overall Progress</h3>
+            <div class="progress-bar">
+              <div
+                id="overall-progress-fill"
+                class="progress-fill"
+                style="width: 0%"
+              ></div>
+            </div>
+            <div id="overall-progress-text">0% (0/0 days)</div>
+          </div>
+
+          <div id="current-activity">
+            <h3>Current Activity</h3>
+            <div id="quarter-progress">
+              <label>Quarter:</label>
+              <span id="current-quarter">-</span>
+              <div class="progress-bar small">
+                <div
+                  id="quarter-progress-fill"
+                  class="progress-fill"
+                  style="width: 0%"
+                ></div>
+              </div>
+            </div>
+            <div id="zone-progress">
+              <label>Zone:</label>
+              <span id="current-zone">-</span>
+              <div class="progress-bar small">
+                <div
+                  id="zone-progress-fill"
+                  class="progress-fill"
+                  style="width: 0%"
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="zone-progress-list">
+            <h3>By Zone Progress</h3>
+            <div id="zone-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <div id="fetch-statistics">
+            <h3>Statistics</h3>
+            <ul id="stats-list">
+              <li>Stations found: <span id="stat-stations">0</span></li>
+              <li>Total observations: <span id="stat-observations">0</span></li>
+              <li>API calls made: <span id="stat-api-calls">0 / 0</span></li>
+              <li>Rate limit delays: <span id="stat-rate-limits">0</span></li>
+              <li>Elapsed: <span id="stat-elapsed">0s</span></li>
+            </ul>
+          </div>
+
+          <div id="activity-log">
+            <h3>Activity Log</h3>
+            <div id="log-container">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <div id="data-coverage">
+            <h3>Data Coverage</h3>
+            <div id="coverage-info">
+              <p>Current: <span id="coverage-range">-</span></p>
+              <p>Missing: <span id="coverage-gaps">-</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Third-party Libraries -->
@@ -289,6 +388,7 @@
     <script src="js/dataTable.js"></script>
     <script src="js/uiControls.js"></script>
     <script src="js/dataFetcher.js"></script>
+    <script src="js/yearCompare.js"></script>
     <script src="js/main.js"></script>
-</body>
+  </body>
 </html>

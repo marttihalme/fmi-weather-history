@@ -9,6 +9,8 @@ import socketserver
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 
 # Configuration
 PORT = 8000
@@ -37,6 +39,31 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.end_headers()
+
+    def do_POST(self):
+        if self.path == '/api/refresh-30':
+            try:
+                self.refresh_last_30_days()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "message": "Data refreshed"}).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
+        else:
+            self.send_error(404, "Not Found")
+
+    def refresh_last_30_days(self):
+        script_path = BASE_DIR.parent / "scripts" / "refresh_recent_data.py"
+        print(f"Running script: {script_path}")
+        result = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Script failed: {result.stderr}")
+            raise Exception(f"Script failed: {result.stderr}")
+        print(f"Script output: {result.stdout}")
 
     def log_message(self, format, *args):
         # Custom logging format

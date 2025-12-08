@@ -4,7 +4,7 @@
  */
 
 const HeatmapRenderer = {
-  currentMode: 'stations', // 'stations' or 'interpolated'
+  currentMode: 'interpolated', // Always use interpolated mode
   currentData: null,
   colorScale: null,
   metric: 'temperature',
@@ -146,25 +146,6 @@ const HeatmapRenderer = {
 
     MapManager.addInterpolationCircles(circles);
 
-    // Add small reference markers on top
-    stations.forEach(station => {
-      const marker = MapManager.addStationMarker(station.lat, station.lon, {
-        radius: 3,
-        fillColor: colorScale.getColor(station.value),
-        fillOpacity: 0.9,
-        strokeColor: '#fff',
-        strokeWidth: 1
-      });
-
-      if (marker) {
-        marker.datum({
-          ...station,
-          metric: metric,
-          formattedValue: `${metric}: ${station.value.toFixed(1)}`
-        });
-      }
-    });
-
     console.log(`Rendered ${stations.length} interpolated circles`);
   },
 
@@ -242,28 +223,6 @@ const HeatmapRenderer = {
     });
 
     MapManager.addInterpolationCircles(circles);
-
-    // Add small markers at station locations for reference
-    allStations.forEach(station => {
-      const hasSnow = station.value >= 0.5;
-      const marker = MapManager.addStationMarker(station.lat, station.lon, {
-        radius: hasSnow ? 3 : 2,
-        fillColor: hasSnow ? '#ffffff' : '#666666',
-        fillOpacity: hasSnow ? 0.8 : 0.3,
-        strokeColor: hasSnow ? '#ffffff' : '#999999',
-        strokeWidth: 1,
-        opacity: hasSnow ? 1 : 0.5
-      });
-
-      if (marker) {
-        marker.datum({
-          ...station,
-          metric: metric,
-          hasSnow: hasSnow,
-          formattedValue: hasSnow ? `Snow: ${station.value.toFixed(1)} cm` : 'No snow'
-        });
-      }
-    });
 
     console.log(`Rendered unified snow coverage area`);
   },
