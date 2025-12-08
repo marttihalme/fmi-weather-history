@@ -11,6 +11,7 @@ const DataLoader = {
         stations: null,          // Station locations
         anomalies: null,         // Anomaly events
         winterStarts: null,      // Winter progression
+        slipperyRisk: null,      // Slippery road risk data
         precomputedGrids: null   // Pre-computed IDW grids
     },
 
@@ -21,6 +22,7 @@ const DataLoader = {
         stations: false,
         anomalies: false,
         winterStarts: false,
+        slipperyRisk: false,
         precomputedGrids: false
     },
 
@@ -31,6 +33,7 @@ const DataLoader = {
         stations: false,
         anomalies: false,
         winterStarts: false,
+        slipperyRisk: false,
         precomputedGrids: false
     },
 
@@ -43,12 +46,13 @@ const DataLoader = {
 
         try {
             // Load in parallel for speed
-            const [zoneSummary, stationData, stations, anomalies, winterStarts] = await Promise.all([
+            const [zoneSummary, stationData, stations, anomalies, winterStarts, slipperyRisk] = await Promise.all([
                 this.loadZoneSummary(),
                 this.loadStationData(),
                 this.loadStations(),
                 this.loadAnomalies(),
-                this.loadWinterStarts()
+                this.loadWinterStarts(),
+                this.loadSlipperyRisk()
             ]);
 
             console.log('Essential data loaded successfully');
@@ -57,6 +61,7 @@ const DataLoader = {
             console.log('- Stations:', stations.length, 'locations');
             console.log('- Anomalies:', anomalies.length, 'events');
             console.log('- Winter seasons:', winterStarts.length, 'records');
+            console.log('- Slippery risk:', slipperyRisk.length, 'records');
 
             // Load precomputed grids in background (not blocking)
             this.loadPrecomputedGrids().catch(err => {
@@ -68,7 +73,8 @@ const DataLoader = {
                 stationData,
                 stations,
                 anomalies,
-                winterStarts
+                winterStarts,
+                slipperyRisk
             };
 
         } catch (error) {
@@ -170,6 +176,30 @@ const DataLoader = {
             return data;
         } finally {
             this.loading.winterStarts = false;
+        }
+    },
+
+    /**
+     * Load slippery road risk data
+     * @returns {Promise<Array>} Slippery risk records
+     */
+    async loadSlipperyRisk() {
+        if (this.loaded.slipperyRisk) return this.data.slipperyRisk;
+
+        this.loading.slipperyRisk = true;
+
+        try {
+            const data = await this.fetchJSON('data/slippery_risk.json');
+            this.data.slipperyRisk = data;
+            this.loaded.slipperyRisk = true;
+            return data;
+        } catch (error) {
+            console.warn('Slippery risk data not available:', error.message);
+            this.data.slipperyRisk = [];
+            this.loaded.slipperyRisk = true;
+            return [];
+        } finally {
+            this.loading.slipperyRisk = false;
         }
     },
 

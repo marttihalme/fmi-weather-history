@@ -229,6 +229,35 @@ const TimelineController = {
         .attr('fill', i % 2 === 0 ? '#fafafa' : '#f5f5f5');
     });
 
+    // Draw slippery risk periods (context view)
+    if (DataLoader.data.slipperyRisk) {
+      DataLoader.data.slipperyRisk.forEach(risk => {
+        const zoneIndex = zones.indexOf(risk.zone);
+        if (zoneIndex === -1) return;
+
+        const y = zoneIndex * zoneHeight;
+
+        // Draw slippery periods
+        if (risk.slippery_periods) {
+          risk.slippery_periods.forEach(period => {
+            const periodStart = new Date(period.start);
+            const periodEnd = new Date(period.end);
+
+            const x = xScale(periodStart);
+            const barWidth = Math.max(1, xScale(periodEnd) - x);
+
+            this.contextSvg.append('rect')
+              .attr('class', 'slippery-period')
+              .attr('x', x)
+              .attr('y', y + zoneHeight * 0.7)
+              .attr('width', barWidth)
+              .attr('height', zoneHeight * 0.25)
+              .attr('fill', period.high_risk_days > 0 ? 'rgba(255, 152, 0, 0.7)' : 'rgba(255, 193, 7, 0.5)');
+          });
+        }
+      });
+    }
+
     // Draw winter periods with cold spells (detailed view)
     if (DataLoader.data.winterStarts) {
       DataLoader.data.winterStarts.forEach(winter => {
@@ -346,6 +375,70 @@ const TimelineController = {
         .attr('dominant-baseline', 'middle')
         .text(zone);
     });
+
+    // Draw slippery risk periods (focus view with tooltips)
+    if (DataLoader.data.slipperyRisk) {
+      const self = this;
+
+      DataLoader.data.slipperyRisk.forEach(risk => {
+        const zoneIndex = zones.indexOf(risk.zone);
+        if (zoneIndex === -1) return;
+
+        const y = zoneIndex * zoneHeight;
+
+        // Draw season start marker
+        if (risk.season_start) {
+          const seasonStart = new Date(risk.season_start);
+          if (seasonStart >= startDomain && seasonStart <= endDomain) {
+            this.focusSvg.append('line')
+              .attr('class', 'slippery-start-line')
+              .attr('x1', xScale(seasonStart))
+              .attr('y1', y)
+              .attr('x2', xScale(seasonStart))
+              .attr('y2', y + zoneHeight)
+              .attr('stroke', '#ff9800')
+              .attr('stroke-width', 2)
+              .attr('stroke-dasharray', '4,2');
+          }
+        }
+
+        // Draw slippery periods
+        if (risk.slippery_periods) {
+          risk.slippery_periods.forEach(period => {
+            const periodStart = new Date(period.start);
+            const periodEnd = new Date(period.end);
+
+            // Skip if outside visible range
+            if (periodEnd < startDomain || periodStart > endDomain) return;
+
+            const x = Math.max(0, xScale(periodStart));
+            const endX = Math.min(width, xScale(periodEnd));
+            const barWidth = Math.max(2, endX - x);
+
+            const isHighRisk = period.high_risk_days > 0;
+
+            this.focusSvg.append('rect')
+              .attr('class', 'slippery-period')
+              .attr('x', x)
+              .attr('y', y + zoneHeight * 0.65)
+              .attr('width', barWidth)
+              .attr('height', zoneHeight * 0.3)
+              .attr('fill', isHighRisk ? 'rgba(255, 152, 0, 0.8)' : 'rgba(255, 193, 7, 0.6)')
+              .attr('stroke', isHighRisk ? '#e65100' : '#f9a825')
+              .attr('stroke-width', 0.5)
+              .style('cursor', 'pointer')
+              .on('mouseover', function(event) {
+                d3.select(this).attr('fill', isHighRisk ? 'rgba(255, 152, 0, 1)' : 'rgba(255, 193, 7, 0.9)');
+                self.showSlipperyTooltip(event.clientX, event.clientY, risk, period);
+              })
+              .on('mouseout', function() {
+                d3.select(this).attr('fill', isHighRisk ? 'rgba(255, 152, 0, 0.8)' : 'rgba(255, 193, 7, 0.6)');
+                self.hideAnomalyTooltip();
+              });
+          });
+        }
+      });
+    }
 
     // Draw winter periods with detailed cold/warm spells
     if (DataLoader.data.winterStarts) {
@@ -786,6 +879,56 @@ const TimelineController = {
   },
 
   /**
+   * Show tooltip for slippery road risk period
+   */
+  showSlipperyTooltip(x, y, risk, period) {
+    let tooltip = document.getElementById('anomaly-timeline-tooltip');
+
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'anomaly-timeline-tooltip';
+      tooltip.style.position = 'fixed';
+      tooltip.style.background = 'rgba(0, 0, 0, 0.9)';
+      tooltip.style.color = 'white';
+      tooltip.style.padding = '10px';
+      tooltip.style.borderRadius = '6px';
+      tooltip.style.fontSize = '12px';
+      tooltip.style.zIndex = '10000';
+      tooltip.style.pointerEvents = 'none';
+      tooltip.style.maxWidth = '300px';
+      tooltip.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+      document.body.appendChild(tooltip);
+    }
+
+    const isHighRisk = period.high_risk_days > 0;
+    const avgMin = period.avg_min_temp !== null ? period.avg_min_temp.toFixed(1) : '-';
+    const avgMax = period.avg_max_temp !== null ? period.avg_max_temp.toFixed(1) : '-';
+
+    let html = `<div style="color: ${isHighRisk ? '#ff9800' : '#ffc107'};">
+      <strong>⚠️ Liukkausriski</strong><br>
+      <span style="font-size: 11px;">${risk.zone} • Syksy ${risk.year}</span>
+    </div>
+    <div style="margin-top: 8px;">
+      <strong>${period.start}</strong> → <strong>${period.end}</strong><br>
+      Kesto: ${period.duration} päivää<br>
+      ${isHighRisk ? `Korkea riski: ${period.high_risk_days} pv<br>` : ''}
+      Yölämpötila: ${avgMin}°C<br>
+      Päivälämpötila: ${avgMax}°C
+    </div>`;
+
+    // Add season summary
+    html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444; font-size: 11px; color: #aaa;">
+      Liukkauskausi alkoi: ${risk.season_start}<br>
+      Riskipäiviä syksyllä: ${risk.risk_days_total} (korkea: ${risk.high_risk_days})
+    </div>`;
+
+    tooltip.innerHTML = html;
+    tooltip.style.left = (x + 15) + 'px';
+    tooltip.style.top = (y + 15) + 'px';
+    tooltip.style.display = 'block';
+  },
+
+  /**
    * Attach event handlers to timeline UI elements
    */
   attachEventHandlers() {
@@ -931,18 +1074,15 @@ const TimelineController = {
   },
 
   /**
-   * Update the active anomalies list in the sidebar
+   * Update the active anomalies list in both sidebars
    */
   updateActiveAnomaliesList() {
-    const container = document.getElementById('active-anomalies-list');
-    if (!container || !this.currentDate) return;
+    const leftContainer = document.getElementById('active-anomalies-list');
+    const rightContainer = document.getElementById('active-anomalies-list-right');
+
+    if (!this.currentDate) return;
 
     const anomalies = DataLoader.getAnomaliesForDate(this.currentDate);
-
-    if (!anomalies || anomalies.length === 0) {
-      container.innerHTML = '<p style="color: #999; font-size: 12px;">No anomalies on this date</p>';
-      return;
-    }
 
     // Anomaly type CSS classes
     const anomalyClasses = {
@@ -962,32 +1102,101 @@ const TimelineController = {
       'Äkillinen lämpeneminen': '⚡'
     };
 
-    let html = '';
-    anomalies.forEach(anomaly => {
-      const cssClass = anomalyClasses[anomaly.type] || '';
-      const icon = anomalyIcons[anomaly.type] || '⚠️';
+    // Build HTML for left sidebar (compact version)
+    if (leftContainer) {
+      if (!anomalies || anomalies.length === 0) {
+        leftContainer.innerHTML = '<p style="color: #999; font-size: 12px;">No anomalies on this date</p>';
+      } else {
+        let html = '';
+        anomalies.forEach(anomaly => {
+          const cssClass = anomalyClasses[anomaly.type] || '';
+          const icon = anomalyIcons[anomaly.type] || '⚠️';
 
-      let details = [];
-      if (anomaly.duration_days > 1) {
-        details.push(`Duration: ${anomaly.duration_days} days`);
-      }
-      if (anomaly.min_temperature !== null && anomaly.min_temperature !== undefined) {
-        details.push(`Min: ${anomaly.min_temperature.toFixed(1)}°C`);
-      }
-      if (anomaly.max_temperature !== null && anomaly.max_temperature !== undefined) {
-        details.push(`Max: ${anomaly.max_temperature.toFixed(1)}°C`);
-      }
+          let details = [];
+          if (anomaly.duration_days > 1) {
+            details.push(`Duration: ${anomaly.duration_days} days`);
+          }
+          if (anomaly.min_temperature !== null && anomaly.min_temperature !== undefined) {
+            details.push(`Min: ${anomaly.min_temperature.toFixed(1)}°C`);
+          }
+          if (anomaly.max_temperature !== null && anomaly.max_temperature !== undefined) {
+            details.push(`Max: ${anomaly.max_temperature.toFixed(1)}°C`);
+          }
 
-      html += `
-        <div class="active-anomaly-item ${cssClass}">
-          <span class="anomaly-type">${icon} ${anomaly.type}</span>
-          <span class="anomaly-zone">${anomaly.zone}</span>
-          ${details.length > 0 ? `<div class="anomaly-details">${details.join(' • ')}</div>` : ''}
-        </div>
-      `;
-    });
+          html += `
+            <div class="active-anomaly-item ${cssClass}">
+              <span class="anomaly-type">${icon} ${anomaly.type}</span>
+              <span class="anomaly-zone">${anomaly.zone}</span>
+              ${details.length > 0 ? `<div class="anomaly-details">${details.join(' • ')}</div>` : ''}
+            </div>
+          `;
+        });
+        leftContainer.innerHTML = html;
+      }
+    }
 
-    container.innerHTML = html;
+    // Build HTML for right sidebar (card-style version with more details)
+    if (rightContainer) {
+      if (!anomalies || anomalies.length === 0) {
+        rightContainer.innerHTML = '<p class="no-anomalies-message">No anomalies on this date</p>';
+      } else {
+        let html = '';
+        anomalies.forEach(anomaly => {
+          const cssClass = anomalyClasses[anomaly.type] || '';
+          const icon = anomalyIcons[anomaly.type] || '⚠️';
+
+          // Format dates
+          const startDate = anomaly.start_date || anomaly.date;
+          const endDate = anomaly.end_date || (startDate && anomaly.duration_days > 1
+            ? this.addDays(startDate, anomaly.duration_days - 1)
+            : startDate);
+
+          const dateStr = anomaly.duration_days > 1
+            ? `${this.formatShortDate(startDate)} - ${this.formatShortDate(endDate)}`
+            : this.formatShortDate(startDate);
+
+          // Build value string
+          let valueStr = '';
+          if (anomaly.min_temperature !== null && anomaly.min_temperature !== undefined) {
+            valueStr = `Min: <strong>${anomaly.min_temperature.toFixed(1)}°C</strong>`;
+          }
+          if (anomaly.max_temperature !== null && anomaly.max_temperature !== undefined) {
+            if (valueStr) valueStr += ' / ';
+            valueStr += `Max: <strong>${anomaly.max_temperature.toFixed(1)}°C</strong>`;
+          }
+
+          html += `
+            <div class="anomaly-card ${cssClass}">
+              <div class="anomaly-header">
+                <span class="anomaly-type">${icon} ${anomaly.type}</span>
+                <span class="anomaly-zone">${anomaly.zone}</span>
+              </div>
+              <div class="anomaly-dates">${dateStr}${anomaly.duration_days > 1 ? ` (${anomaly.duration_days} pv)` : ''}</div>
+              ${valueStr ? `<div class="anomaly-value">${valueStr}</div>` : ''}
+            </div>
+          `;
+        });
+        rightContainer.innerHTML = html;
+      }
+    }
+  },
+
+  /**
+   * Format date as short Finnish format (d.m.)
+   */
+  formatShortDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return `${d.getDate()}.${d.getMonth() + 1}.`;
+  },
+
+  /**
+   * Add days to a date string
+   */
+  addDays(dateStr, days) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    return d.toISOString().split('T')[0];
   },
 
   /**
