@@ -13,6 +13,8 @@ Output: ../data/daily_zone_summary.json (~400 KB gzipped)
 import pandas as pd
 import json
 import gzip
+import subprocess
+import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -24,9 +26,16 @@ DATA_DIR.mkdir(exist_ok=True)
 print("Finnish Weather Data Preprocessor")
 print("=" * 50)
 
-# 1. Load main weather data
-print("\n1. Loading weather data (387k rows)...")
-df = pd.read_csv(BASE_DIR / "data" / "raw" / "weather_data_2022_2025_all.csv")
+# 1. Load main weather data - find the actual file dynamically
+print("\n1. Loading weather data...")
+raw_dir = BASE_DIR / "data" / "raw"
+csv_files = list(raw_dir.glob("weather_data_*_all.csv"))
+if not csv_files:
+    raise FileNotFoundError(f"No weather_data_*_all.csv found in {raw_dir}")
+# Use the most recent file if multiple exist
+csv_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+print(f"   Using: {csv_file.name}")
+df = pd.read_csv(csv_file)
 print(f"   Loaded {len(df):,} observations")
 print(f"   Date range: {df['date'].min()} to {df['date'].max()}")
 print(f"   Stations: {df['station_name'].nunique()}")
@@ -121,25 +130,35 @@ with gzip.open(output_file_gz, 'wt') as f:
     json.dump(station_data, f)
 print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
 
-# 4. Process anomalies
+# 4. Process anomalies (optional source)
 print("\n4. Processing weather anomalies...")
-anomalies = pd.read_csv(BASE_DIR / "data" / "analysis" / "weather_anomalies.csv")
-print(f"   Loaded {len(anomalies)} anomaly events")
+anomaly_csv = BASE_DIR / "data" / "analysis" / "weather_anomalies.csv"
+anomaly_data = None
 
-# Add geospatial information
-anomaly_types = anomalies['type'].unique()
-print(f"   Anomaly types: {', '.join(anomaly_types)}")
+if anomaly_csv.exists():
+    anomalies = pd.read_csv(anomaly_csv)
+    print(f"   Loaded {len(anomalies)} anomaly events")
 
-# Convert dates to strings
-if 'start_date' in anomalies.columns:
-    anomalies['start_date'] = anomalies['start_date'].astype(str)
-if 'date' in anomalies.columns:
-    anomalies['date'] = anomalies['date'].astype(str)
+    anomaly_types = anomalies['type'].unique()
+    print(f"   Anomaly types: {', '.join(anomaly_types)}")
 
-# Replace NaN with None (which becomes null in JSON)
-anomalies = anomalies.replace({float('nan'): None})
+    if 'start_date' in anomalies.columns:
+        anomalies['start_date'] = anomalies['start_date'].astype(str)
+    if 'date' in anomalies.columns:
+        anomalies['date'] = anomalies['date'].astype(str)
 
-anomaly_data = anomalies.to_dict(orient='records')
+    anomalies = anomalies.replace({float('nan'): None})
+    anomaly_data = anomalies.to_dict(orient='records')
+else:
+    print("   Warning: weather_anomalies.csv not found")
+    existing_anomalies = DATA_DIR / "anomalies.json"
+    if existing_anomalies.exists():
+        with open(existing_anomalies, 'r') as f:
+            anomaly_data = json.load(f)
+        print(f"   Reusing existing anomalies.json ({len(anomaly_data)} records)")
+    else:
+        print("   No existing anomalies data found; continuing without anomalies")
+        anomaly_data = []
 
 output_file = DATA_DIR / "anomalies.json"
 with open(output_file, 'w') as f:
@@ -197,12 +216,52 @@ print(f"  Original: {len(df):,} rows")
 print(f"  Station-daily: {len(station_daily):,} rows (individual station data)")
 print(f"  Zone summaries: {len(zone_metrics):,} rows (for statistics)")
 print(f"\nOutput files created in: {DATA_DIR}")
-print(f"  ✓ daily_station_data.json (primary visualization data)")
-print(f"  ✓ daily_zone_summary.json (zone statistics)")
-print(f"  ✓ station_locations.json")
-print(f"  ✓ anomalies.json")
-print(f"  ✓ winter_starts.json")
+print(f"  [ok] daily_station_data.json (primary visualization data)")
+print(f"  [ok] daily_zone_summary.json (zone statistics)")
+print(f"  [ok] station_locations.json")
+print(f"  [ok] anomalies.json")
+print(f"  [ok] winter_starts.json")
 print(f"\nNext steps:")
 print(f"  1. Run: python preprocessing/generate_grids.py")
 print(f"  2. Start server: python backend/server.py")
 print(f"  3. Open: http://localhost:8000")
+
+# 7. Run all analysis scripts
+print("\n" + "=" * 50)
+print("RUNNING ANALYSIS SCRIPTS")
+print("=" * 50)
+
+analysis_scripts = [
+    'analyze_first_frost.py',
+    'analyze_winter_start.py',
+    'analyze_slippery_risk.py',
+    'analyze_weather_anomalies.py'
+]
+
+SCRIPTS_DIR = BASE_DIR / "scripts"
+
+for script in analysis_scripts:
+    script_path = SCRIPTS_DIR / script
+    if script_path.exists():
+        print(f"\n► Running {script}...")
+        try:
+            result = subprocess.run(
+                [sys.executable, str(script_path)],
+                cwd=str(SCRIPTS_DIR),
+                capture_output=False,
+                timeout=300
+            )
+            if result.returncode == 0:
+                print(f"  ✓ {script} completed successfully")
+            else:
+                print(f"  ✗ {script} failed with code {result.returncode}")
+        except subprocess.TimeoutExpired:
+            print(f"  ✗ {script} timed out")
+        except Exception as e:
+            print(f"  ✗ Error running {script}: {e}")
+    else:
+        print(f"\n✗ Script not found: {script_path}")
+
+print("\n" + "=" * 50)
+print("ALL PROCESSING COMPLETE")
+print("=" * 50)

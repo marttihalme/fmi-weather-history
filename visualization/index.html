@@ -124,7 +124,7 @@
               <!-- Current Date Info -->
               <div class="legend-section">
                 <h4>Current Date</h4>
-                <div id="current-date-display">2022-01-01</div>
+                <div id="current-date-display">Loading...</div>
                 <div id="current-stats">
                   <!-- Populated dynamically -->
                 </div>
@@ -171,6 +171,31 @@
                 <span class="legend-item"
                   ><span class="winter-end-icon"></span> Kauden loppu</span
                 >
+                <span class="legend-item"
+                  ><span class="slippery-start-icon"></span> Liukkauskausi
+                  alkaa</span
+                >
+                <span class="legend-item"
+                  ><span class="slippery-bar-icon"></span> Liukkausriski</span
+                >
+                <span class="legend-item"
+                  ><span class="anomaly-icon extreme-cold"></span> Äärimmäinen
+                  kylmyys</span
+                >
+                <span class="legend-item"
+                  ><span class="anomaly-icon cold-snap"></span> Ankara
+                  pakkasjakso</span
+                >
+                <span class="legend-item"
+                  ><span class="anomaly-icon heat-wave"></span> Hellejakso</span
+                >
+                <span class="legend-item"
+                  ><span class="anomaly-icon return-winter"></span>
+                  Takatalvi</span
+                >
+                <span class="legend-item"
+                  ><span class="anomaly-icon temp-jump"></span> Lämpöhyppy</span
+                >
               </span>
               <span class="brush-hint"
                 >Drag on the overview below to select time range</span
@@ -185,9 +210,9 @@
           <!-- Date Slider -->
           <div id="date-slider-container">
             <div id="date-slider-labels">
-              <span id="date-min">2022-01-01</span>
-              <span id="date-current">2022-01-01</span>
-              <span id="date-max">2025-12-31</span>
+              <span id="date-min">...</span>
+              <span id="date-current">...</span>
+              <span id="date-max">...</span>
             </div>
             <input
               type="range"
@@ -215,22 +240,72 @@
               <label for="zone-selector">Zone:</label>
               <select id="zone-selector">
                 <option value="all">All Zones</option>
-                <option value="Etelä-Suomi">Etelä-Suomi</option>
+                <option value="Etelä-Suomi" selected>Etelä-Suomi</option>
                 <option value="Keski-Suomi">Keski-Suomi</option>
                 <option value="Pohjois-Suomi">Pohjois-Suomi</option>
                 <option value="Lappi">Lappi</option>
               </select>
             </div>
             <span class="compare-legend-inline">
-              <span class="legend-item"><span class="cold-spell-icon"></span> Pakkasjakso</span>
-              <span class="legend-item"><span class="warm-spell-icon"></span> Lämpökatko</span>
-              <span class="legend-item"><span class="winter-start-icon"></span> Talven alku</span>
-              <span class="legend-item"><span class="winter-end-icon"></span> Talven loppu</span>
-              <span class="legend-item"><span class="anomaly-icon extreme-cold"></span> Äärimmäinen kylmyys</span>
-              <span class="legend-item"><span class="anomaly-icon cold-snap"></span> Ankara pakkasjakso</span>
-              <span class="legend-item"><span class="anomaly-icon heat-wave"></span> Hellejakso</span>
-              <span class="legend-item"><span class="anomaly-icon return-winter"></span> Takatalvi</span>
-              <span class="legend-item"><span class="anomaly-icon temp-jump"></span> Lämpöhyppy</span>
+              <span
+                class="legend-item"
+                title="Vähintään 3 peräkkäistä päivää, jolloin keskilämpötila alle -10°C"
+                ><span class="cold-spell-icon"></span> Pakkasjakso</span
+              >
+              <span
+                class="legend-item"
+                title="Talvikauden aikana vähintään 2 päivää, jolloin keskilämpötila nousee yli 0°C"
+                ><span class="warm-spell-icon"></span> Lämpökatko</span
+              >
+              <span
+                class="legend-item"
+                title="Päivä, jolloin keskilämpötila laskee pysyvästi alle 0°C (5 pv liukuva keskiarvo)"
+                ><span class="winter-start-icon"></span> Talven alku</span
+              >
+              <span
+                class="legend-item"
+                title="Päivä, jolloin keskilämpötila nousee pysyvästi yli 0°C keväällä"
+                ><span class="winter-end-icon"></span> Talven loppu</span
+              >
+              <span
+                class="legend-item"
+                title="Ensimmäinen päivä syksyllä, kun yölämpötila laskee alle 0°C ja päivälämpötila on 0-5°C"
+                ><span class="slippery-start-icon"></span> Liukkauskausi
+                alkaa</span
+              >
+              <span
+                class="legend-item"
+                title="Jakso, jolloin yöpakkanen ja päivällä sulamislämpötila luovat liukkautta (yö <0°C, päivä 0-5°C)"
+                ><span class="slippery-bar-icon"></span> Liukkausriski</span
+              >
+              <span
+                class="legend-item"
+                title="Vuorokauden minimilämpötila ≤ -25°C"
+                ><span class="anomaly-icon extreme-cold"></span> Äärimmäinen
+                kylmyys</span
+              >
+              <span
+                class="legend-item"
+                title="Vähintään 3 peräkkäistä päivää, jolloin maksimilämpötila alle -15°C"
+                ><span class="anomaly-icon cold-snap"></span> Ankara
+                pakkasjakso</span
+              >
+              <span
+                class="legend-item"
+                title="Vähintään 3 peräkkäistä päivää, jolloin maksimilämpötila yli +25°C"
+                ><span class="anomaly-icon heat-wave"></span> Hellejakso</span
+              >
+              <span
+                class="legend-item"
+                title="Kevään jälkeen uusi pakkasjakso, kun lämpötila on jo ollut pysyvästi plussan puolella"
+                ><span class="anomaly-icon return-winter"></span>
+                Takatalvi</span
+              >
+              <span
+                class="legend-item"
+                title="Vuorokauden keskilämpötila muuttuu yli ±15°C edelliseen päivään verrattuna"
+                ><span class="anomaly-icon temp-jump"></span> Lämpöhyppy</span
+              >
             </span>
           </div>
 
@@ -246,124 +321,79 @@
       <!-- Tab Content: Data Management -->
       <div id="data-management-tab" class="tab-content">
         <div id="data-fetcher">
-          <h2>Historical Data Fetcher</h2>
+          <h2>Data Management</h2>
 
-          <div class="fetcher-controls">
-            <div class="control-group">
-              <label>Fetch Mode:</label>
-              <label>
-                <input
-                  type="radio"
-                  name="fetch-mode"
-                  value="date-range"
-                  checked
-                />
-                Date Range
-              </label>
-              <label>
-                <input type="radio" name="fetch-mode" value="refresh-latest" />
-                Refresh Latest
-              </label>
+          <!-- Data Status Card -->
+          <div class="data-status-card">
+            <div class="status-header">
+              <span class="status-icon" id="data-status-icon">●</span>
+              <h3>Data Status</h3>
             </div>
-
-            <div class="control-group" id="date-range-controls">
-              <label for="start-date">From:</label>
-              <input type="date" id="start-date" value="2015-01-01" />
-              <label for="end-date">To:</label>
-              <input type="date" id="end-date" value="2021-12-31" />
+            <div class="status-details">
+              <div class="status-row">
+                <span class="status-label">Date Range:</span>
+                <span class="status-value" id="data-date-range"
+                  >Loading...</span
+                >
+              </div>
+              <div class="status-row">
+                <span class="status-label">Stations:</span>
+                <span class="status-value" id="data-station-count">-</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Observations:</span>
+                <span class="status-value" id="data-observation-count">-</span>
+              </div>
+              <div class="status-row">
+                <span class="status-label">Last Updated:</span>
+                <span class="status-value" id="data-last-updated">-</span>
+              </div>
             </div>
+          </div>
 
-            <div class="control-group">
-              <button id="btn-start-fetch" class="primary-button">
-                Start Fetch
-              </button>
+          <!-- Zone Coverage -->
+          <div class="zone-coverage-section">
+            <h3>Zone Coverage</h3>
+            <div id="zone-coverage-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="data-actions">
+            <h3>Quick Actions</h3>
+            <div class="action-buttons">
               <button id="btn-refresh-30" class="primary-button">
-                Refresh last 30 days
+                Refresh Last 30 Days
               </button>
-              <button id="btn-pause-fetch" class="secondary-button" disabled>
-                Pause
-              </button>
-              <button id="btn-resume-fetch" class="secondary-button" disabled>
-                Resume
-              </button>
-              <button id="btn-cancel-fetch" class="secondary-button" disabled>
-                Cancel
+              <button id="btn-refresh-5years" class="primary-button">
+                Delete data and get last 5 years
               </button>
             </div>
           </div>
 
-          <div id="fetch-status">
-            <h3>Status: <span id="status-text">Idle</span></h3>
-          </div>
-
-          <div id="fetch-progress">
-            <h3>Overall Progress</h3>
-            <div class="progress-bar">
-              <div
-                id="overall-progress-fill"
-                class="progress-fill"
-                style="width: 0%"
-              ></div>
+          <!-- Operation Status -->
+          <div id="operation-status" class="operation-status hidden">
+            <div class="operation-header">
+              <span class="operation-icon spinning">⟳</span>
+              <span id="operation-text">Processing...</span>
             </div>
-            <div id="overall-progress-text">0% (0/0 days)</div>
-          </div>
-
-          <div id="current-activity">
-            <h3>Current Activity</h3>
-            <div id="quarter-progress">
-              <label>Quarter:</label>
-              <span id="current-quarter">-</span>
-              <div class="progress-bar small">
+            <div class="progress-container">
+              <div class="progress-bar-modern">
                 <div
-                  id="quarter-progress-fill"
-                  class="progress-fill"
-                  style="width: 0%"
+                  id="operation-progress-fill"
+                  class="progress-fill-modern"
                 ></div>
               </div>
-            </div>
-            <div id="zone-progress">
-              <label>Zone:</label>
-              <span id="current-zone">-</span>
-              <div class="progress-bar small">
-                <div
-                  id="zone-progress-fill"
-                  class="progress-fill"
-                  style="width: 0%"
-                ></div>
-              </div>
+              <span id="operation-progress-text" class="progress-text">0%</span>
             </div>
           </div>
 
-          <div id="zone-progress-list">
-            <h3>By Zone Progress</h3>
-            <div id="zone-list">
-              <!-- Populated dynamically -->
-            </div>
-          </div>
-
-          <div id="fetch-statistics">
-            <h3>Statistics</h3>
-            <ul id="stats-list">
-              <li>Stations found: <span id="stat-stations">0</span></li>
-              <li>Total observations: <span id="stat-observations">0</span></li>
-              <li>API calls made: <span id="stat-api-calls">0 / 0</span></li>
-              <li>Rate limit delays: <span id="stat-rate-limits">0</span></li>
-              <li>Elapsed: <span id="stat-elapsed">0s</span></li>
-            </ul>
-          </div>
-
-          <div id="activity-log">
+          <!-- Activity Log -->
+          <div class="activity-log-section">
             <h3>Activity Log</h3>
-            <div id="log-container">
-              <!-- Populated dynamically -->
-            </div>
-          </div>
-
-          <div id="data-coverage">
-            <h3>Data Coverage</h3>
-            <div id="coverage-info">
-              <p>Current: <span id="coverage-range">-</span></p>
-              <p>Missing: <span id="coverage-gaps">-</span></p>
+            <div id="log-container" class="log-container">
+              <div class="log-entry info">Ready</div>
             </div>
           </div>
         </div>

@@ -14,6 +14,414 @@ const DataFetcher = {
    */
   initialize(baseURL = "/api") {
     this.baseURL = baseURL;
+    this.initializeDataManagementUI();
+  },
+
+  /**
+   * Initialize Data Management UI
+   */
+  initializeDataManagementUI() {
+    // Refresh 30 days button
+    const btnRefresh30 = document.getElementById("btn-refresh-30");
+    if (btnRefresh30) {
+      btnRefresh30.addEventListener("click", () => this.handleRefresh30());
+    }
+
+    // Refresh 5 years button
+    const btnRefresh5Years = document.getElementById("btn-refresh-5years");
+    if (btnRefresh5Years) {
+      btnRefresh5Years.addEventListener("click", () =>
+        this.handleRefresh5Years()
+      );
+    }
+
+    // Update data status when tab is shown
+    this.updateDataStatus();
+  },
+
+  /**
+   * Update data status display
+   */
+  async updateDataStatus() {
+    const statusIcon = document.getElementById("data-status-icon");
+    const dateRange = document.getElementById("data-date-range");
+    const stationCount = document.getElementById("data-station-count");
+    const observationCount = document.getElementById("data-observation-count");
+    const lastUpdated = document.getElementById("data-last-updated");
+    const zoneCoverageList = document.getElementById("zone-coverage-list");
+
+    try {
+      // Get data from DataLoader if available
+      if (typeof DataLoader !== "undefined") {
+        const range = DataLoader.getDateRange();
+        const stations = DataLoader.getStations();
+        const zoneSummary = DataLoader.getZoneSummary();
+        const stationData = DataLoader.getStationData();
+
+        if (dateRange && range) {
+          dateRange.textContent = `${range.minDate} → ${range.maxDate}`;
+        }
+        if (stationCount && stations) {
+          stationCount.textContent = stations.length;
+        }
+        if (observationCount) {
+          const count = stationData ? stationData.length : 0;
+          observationCount.textContent = count ? count.toLocaleString() : "0";
+        }
+        if (lastUpdated) {
+          // Try to get file modification time from data
+          lastUpdated.textContent = new Date().toLocaleDateString("fi-FI");
+        }
+        if (statusIcon) {
+          statusIcon.classList.remove("loading", "offline");
+          statusIcon.classList.add("online");
+        }
+
+        // Update zone coverage
+        if (zoneCoverageList && zoneSummary) {
+          this.updateZoneCoverage(zoneSummary);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating data status:", error);
+      if (statusIcon) {
+        statusIcon.classList.remove("loading", "online");
+        statusIcon.classList.add("offline");
+      }
+    }
+  },
+
+  /**
+   * Update zone coverage display
+   */
+  updateZoneCoverage(zoneSummary) {
+    const container = document.getElementById("zone-coverage-list");
+    if (!container) return;
+
+    // Group by zone and count
+    const zoneCounts = {};
+    const zones = ["Etelä-Suomi", "Keski-Suomi", "Pohjois-Suomi", "Lappi"];
+
+    zones.forEach((zone) => {
+      zoneCounts[zone] = zoneSummary.filter(
+        (d) => (d.zone_name || d.zone) === zone
+      ).length;
+    });
+
+    const maxCount = Math.max(...Object.values(zoneCounts));
+
+    container.innerHTML = zones
+      .map((zone) => {
+        const count = zoneCounts[zone] || 0;
+        const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
+        return `
+        <div class="zone-coverage-item">
+          <span class="zone-coverage-name">${zone}</span>
+          <div class="zone-coverage-bar">
+            <div class="zone-coverage-fill" style="width: ${percentage}%"></div>
+          </div>
+          <span class="zone-coverage-text">${count.toLocaleString()} days</span>
+        </div>
+      `;
+      })
+      .join("");
+  },
+
+  /**
+   * Handle refresh 30 days button
+   */
+  async handleRefresh30() {
+    this.showOperation("Refreshing last 30 days...");
+    this.addLog("Starting refresh of last 30 days", "info");
+
+    try {
+      const result = await this.refreshLast30Days();
+      this.hideOperation();
+      this.showOperationSuccess("Data refreshed successfully!");
+      this.addLog("Refresh completed successfully", "success");
+
+      // Reload the data
+      if (typeof DataLoader !== "undefined") {
+        await DataLoader.loadAll();
+        this.updateDataStatus();
+      }
+    } catch (error) {
+      this.showOperationError(`Failed: ${error.message}`);
+      this.addLog(`Error: ${error.message}`, "error");
+    }
+  },
+
+  /**
+   * Handle refresh 5 years button - uses SSE for progress streaming
+   */
+  async handleRefresh5Years() {
+    this.showOperationWithProgress("Aloitetaan 5 vuoden datan hakua...", 0);
+    this.addLog("Aloitetaan 5 vuoden datan haku", "info");
+
+    // Disable button during operation
+    const btn = document.getElementById("btn-refresh-5years");
+    if (btn) btn.disabled = true;
+
+    try {
+      await this.streamRefresh5Years();
+    } catch (error) {
+      this.showOperationError(`Virhe: ${error.message}`);
+      this.addLog(`Virhe: ${error.message}`, "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  },
+
+  /**
+   * Stream refresh 5 years using Server-Sent Events
+   */
+  streamRefresh5Years() {
+    return new Promise((resolve, reject) => {
+      // Use EventSource for SSE (requires GET, so we use POST via fetch with streaming)
+      fetch(`${this.baseURL}/refresh-5years`, {
+        method: "POST",
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          const processStream = ({ done, value }) => {
+            if (done) {
+              resolve();
+              return;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+
+            // Process complete SSE messages
+            const lines = buffer.split("\n");
+            buffer = lines.pop(); // Keep incomplete line in buffer
+
+            let eventType = null;
+            let eventData = null;
+
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                eventType = line.slice(7).trim();
+              } else if (line.startsWith("data: ")) {
+                try {
+                  eventData = JSON.parse(line.slice(6));
+                  this.handleSSEEvent(eventType, eventData);
+                } catch (e) {
+                  console.warn("Failed to parse SSE data:", line);
+                }
+              }
+            }
+
+            reader.read().then(processStream).catch(reject);
+          };
+
+          reader.read().then(processStream).catch(reject);
+        })
+        .catch(reject);
+    });
+  },
+
+  /**
+   * Handle SSE event from server
+   */
+  handleSSEEvent(eventType, data) {
+    if (eventType === "progress") {
+      this.showOperationWithProgress(data.message, data.percent);
+
+      // Log important milestones
+      if (data.step === "fetch" && data.current_quarter) {
+        this.addLog(
+          `Jakso ${data.current_quarter}/${data.total_quarters}`,
+          "info"
+        );
+      } else if (data.step === "preprocess") {
+        this.addLog(data.message, "info");
+      }
+    } else if (eventType === "complete") {
+      this.showOperationSuccess("5 vuoden data päivitetty!");
+      this.addLog("Päivitys valmis", "success");
+
+      // Reload the data
+      if (typeof DataLoader !== "undefined") {
+        DataLoader.loadAll().then(() => {
+          this.updateDataStatus();
+        });
+      }
+    } else if (eventType === "error") {
+      this.showOperationError(`Virhe: ${data.message}`);
+      this.addLog(`Virhe: ${data.message}`, "error");
+    }
+  },
+
+  /**
+   * Show operation with specific progress percentage
+   */
+  showOperationWithProgress(message, percent) {
+    const container = document.getElementById("operation-status");
+    const textEl = document.getElementById("operation-text");
+    const iconEl = container?.querySelector(".operation-icon");
+    const fill = document.getElementById("operation-progress-fill");
+    const progressText = document.getElementById("operation-progress-text");
+
+    // Clear any fake progress animation
+    if (this._progressInterval) {
+      clearInterval(this._progressInterval);
+      this._progressInterval = null;
+    }
+
+    if (container) {
+      container.classList.remove("hidden", "success", "error");
+      if (iconEl) {
+        iconEl.classList.add("spinning");
+        iconEl.textContent = "⟳";
+      }
+    }
+    if (textEl) {
+      textEl.textContent = message;
+    }
+    if (fill) {
+      fill.style.width = `${percent}%`;
+    }
+    if (progressText) {
+      progressText.textContent = `${Math.round(percent)}%`;
+    }
+  },
+
+  /**
+   * Show operation status
+   */
+  showOperation(message) {
+    const container = document.getElementById("operation-status");
+    const textEl = document.getElementById("operation-text");
+    const iconEl = container?.querySelector(".operation-icon");
+
+    if (container) {
+      container.classList.remove("hidden", "success", "error");
+      if (iconEl) {
+        iconEl.classList.add("spinning");
+        iconEl.textContent = "⟳";
+      }
+    }
+    if (textEl) {
+      textEl.textContent = message;
+    }
+
+    // Animate progress
+    this.animateProgress();
+  },
+
+  /**
+   * Animate progress bar
+   */
+  animateProgress() {
+    const fill = document.getElementById("operation-progress-fill");
+    const text = document.getElementById("operation-progress-text");
+
+    if (!fill) return;
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 15;
+      if (progress > 90) progress = 90;
+      fill.style.width = `${progress}%`;
+      if (text) text.textContent = `${Math.round(progress)}%`;
+    }, 500);
+
+    this._progressInterval = interval;
+  },
+
+  /**
+   * Hide operation status
+   */
+  hideOperation() {
+    if (this._progressInterval) {
+      clearInterval(this._progressInterval);
+    }
+    const container = document.getElementById("operation-status");
+    if (container) {
+      container.classList.add("hidden");
+    }
+  },
+
+  /**
+   * Show operation success
+   */
+  showOperationSuccess(message) {
+    if (this._progressInterval) {
+      clearInterval(this._progressInterval);
+    }
+    const container = document.getElementById("operation-status");
+    const textEl = document.getElementById("operation-text");
+    const iconEl = container?.querySelector(".operation-icon");
+    const fill = document.getElementById("operation-progress-fill");
+    const progressText = document.getElementById("operation-progress-text");
+
+    if (container) {
+      container.classList.remove("hidden", "error");
+      container.classList.add("success");
+    }
+    if (iconEl) {
+      iconEl.classList.remove("spinning");
+      iconEl.textContent = "✓";
+    }
+    if (textEl) textEl.textContent = message;
+    if (fill) fill.style.width = "100%";
+    if (progressText) progressText.textContent = "100%";
+
+    // Auto-hide after 3 seconds
+    setTimeout(() => this.hideOperation(), 3000);
+  },
+
+  /**
+   * Show operation error
+   */
+  showOperationError(message) {
+    if (this._progressInterval) {
+      clearInterval(this._progressInterval);
+    }
+    const container = document.getElementById("operation-status");
+    const textEl = document.getElementById("operation-text");
+    const iconEl = container?.querySelector(".operation-icon");
+
+    if (container) {
+      container.classList.remove("hidden", "success");
+      container.classList.add("error");
+    }
+    if (iconEl) {
+      iconEl.classList.remove("spinning");
+      iconEl.textContent = "✗";
+    }
+    if (textEl) textEl.textContent = message;
+  },
+
+  /**
+   * Add log entry
+   */
+  addLog(message, type = "info") {
+    const container = document.getElementById("log-container");
+    if (!container) return;
+
+    const time = new Date().toLocaleTimeString("fi-FI", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    const entry = document.createElement("div");
+    entry.className = `log-entry ${type}`;
+    entry.innerHTML = `<span class="log-time">${time}</span>${message}`;
+
+    container.insertBefore(entry, container.firstChild);
+
+    // Keep only last 50 entries
+    while (container.children.length > 50) {
+      container.removeChild(container.lastChild);
+    }
   },
 
   /**

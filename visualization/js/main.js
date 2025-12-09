@@ -41,12 +41,17 @@ const App = {
       DataTable.initialize("data-table");
 
       // Initialize Year Compare module
-      if (typeof YearCompare !== 'undefined') {
+      if (typeof YearCompare !== "undefined") {
         YearCompare.initialize();
       }
 
       // Fetch available data
       await this.loadInitialData();
+
+      // Initialize data management helpers (status, buttons)
+      if (typeof DataFetcher !== "undefined") {
+        DataFetcher.initialize("/api");
+      }
 
       // Set up event listeners
       this.setupEventListeners();

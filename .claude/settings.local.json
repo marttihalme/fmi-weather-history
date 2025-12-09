@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(more:*)",
+      "Bash(findstr:*)",
+      "Bash(python analyze_first_frost.py:*)",
+      "Bash(PYTHONUTF8=1 python:*)",
+      "Bash(cat:*)",
+      "Bash(git pull:*)",
+      "Bash(xargs:*)",
+      "Bash(dir /b \"c:\\dev\\fmi-weather-history\")",
+      "Bash(dir /b /s \"c:\\dev\\fmi-weather-history\\visualization\")",
+      "Bash(python scripts\\refresh_recent_data.py:*)",
+      "Bash(python scripts/refresh_recent_data.py:*)",
+      "Bash(pip install:*)",
+      "Bash(dir /b \"c:\\dev\\fmi-weather-history\\data\")",
+      "Bash(dir /b \"c:\\dev\\fmi-weather-history\\visualization\\data\")",
+      "Bash(python:*)",
+      "Bash(dir /b \"c:\\dev\\fmi-weather-history\\data\\analysis\")",
+      "Bash(set:*)",
+      "Bash(echo:*)",
+      "Bash(dir:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

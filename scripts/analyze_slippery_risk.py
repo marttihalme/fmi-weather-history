@@ -110,8 +110,8 @@ def find_slippery_periods(daily_data, min_duration=2):
                 periods.append({
                     'start': dates[start_idx],
                     'end': dates[i - 1],
-                    'duration': duration,
-                    'high_risk_days': high_risk_count,
+                    'duration': int(duration),
+                    'high_risk_days': int(high_risk_count),
                     'avg_min_temp': round(np.mean(temp_mins), 1) if temp_mins else None,
                     'avg_max_temp': round(np.mean(temp_maxs), 1) if temp_maxs else None
                 })
@@ -200,8 +200,12 @@ def main():
     print(f"  - Korkea riski: yö {HIGH_RISK_MIN_RANGE}, päivä {HIGH_RISK_MAX_RANGE}")
     print(f"  - Kausi alkaa: {SEASON_START_THRESHOLD}/7 riskipäivää")
 
-    # Lue data
-    csv_file = DATA_RAW / 'weather_data_2022_2025_all.csv'
+    # Lue data - etsi dynaamisesti uusin tiedosto
+    csv_files = list(DATA_RAW.glob('weather_data_*_all.csv'))
+    if not csv_files:
+        print(f"VIRHE: Ei löydy weather_data_*_all.csv tiedostoa kansiosta {DATA_RAW}")
+        return
+    csv_file = max(csv_files, key=lambda f: f.stat().st_mtime)
     print(f"\nLuetaan tiedosto: {csv_file}")
 
     df = pd.read_csv(csv_file)
@@ -212,7 +216,8 @@ def main():
 
     # Analysoi vyöhykkeittäin ja vuosittain
     zones = ['Etelä-Suomi', 'Keski-Suomi', 'Pohjois-Suomi', 'Lappi']
-    years = [2022, 2023, 2024]
+    # Hae vuodet datasta dynaamisesti
+    years = sorted(df['date'].dt.year.unique())
 
     all_results = []
 
@@ -250,17 +255,17 @@ def main():
         for r in all_results:
             json_entry = {
                 'zone': r['zone'],
-                'year': r['year'],
+                'year': int(r['year']),
                 'season_start': r['season_start'].strftime('%Y-%m-%d'),
                 'first_snow_and_risk': r['first_snow_and_risk'].strftime('%Y-%m-%d') if r['first_snow_and_risk'] else None,
-                'risk_days_total': r['risk_days_total'],
-                'high_risk_days': r['high_risk_days'],
+                'risk_days_total': int(r['risk_days_total']),
+                'high_risk_days': int(r['high_risk_days']),
                 'slippery_periods': [
                     {
                         'start': p['start'].strftime('%Y-%m-%d'),
                         'end': p['end'].strftime('%Y-%m-%d'),
-                        'duration': p['duration'],
-                        'high_risk_days': p['high_risk_days'],
+                        'duration': int(p['duration']),
+                        'high_risk_days': int(p['high_risk_days']),
                         'avg_min_temp': p['avg_min_temp'],
                         'avg_max_temp': p['avg_max_temp']
                     } for p in r['slippery_periods']

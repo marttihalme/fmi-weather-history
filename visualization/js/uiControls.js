@@ -12,6 +12,20 @@ const UIControls = {
     onRefresh30Click: null,
   },
 
+  // Route mapping: URL path -> tab name
+  routes: {
+    '/explore': 'exploration',
+    '/compare-years': 'compare-years',
+    '/data-management': 'data-management',
+  },
+
+  // Reverse mapping: tab name -> URL path
+  tabToRoute: {
+    'exploration': '/explore',
+    'compare-years': '/compare-years',
+    'data-management': '/data-management',
+  },
+
   /**
    * Initialize UI controls
    */
@@ -20,6 +34,7 @@ const UIControls = {
     this.attachCheckboxes();
     this.attachTabNavigation();
     this.attachRefresh30Button();
+    this.initializeRouter();
   },
 
   /**
@@ -114,6 +129,39 @@ const UIControls = {
   },
 
   /**
+   * Initialize router - handle URL changes and browser navigation
+   */
+  initializeRouter() {
+    // Handle browser back/forward navigation
+    window.addEventListener('popstate', (e) => {
+      const tabName = this.getTabFromPath(window.location.pathname);
+      this.switchTab(tabName, false); // Don't push state on popstate
+    });
+
+    // Navigate to initial route based on URL
+    const initialTab = this.getTabFromPath(window.location.pathname);
+    this.switchTab(initialTab, true); // Replace state for initial load
+  },
+
+  /**
+   * Get tab name from URL path
+   * @param {string} path - URL pathname
+   * @returns {string} Tab name
+   */
+  getTabFromPath(path) {
+    // Handle paths with or without trailing slash
+    const cleanPath = path.replace(/\/$/, '') || '/explore';
+
+    // Check direct route match
+    if (this.routes[cleanPath]) {
+      return this.routes[cleanPath];
+    }
+
+    // Default to exploration tab for root or unknown paths
+    return 'exploration';
+  },
+
+  /**
    * Attach tab navigation
    */
   attachTabNavigation() {
@@ -124,7 +172,7 @@ const UIControls = {
       button.addEventListener("click", (e) => {
         const tabName = button.getAttribute("data-tab");
         console.log("Tab clicked:", tabName);
-        this.switchTab(tabName);
+        this.switchTab(tabName, true); // Push state on click
       });
     });
   },
@@ -132,8 +180,9 @@ const UIControls = {
   /**
    * Switch active tab
    * @param {string} tabName - Name of tab to activate
+   * @param {boolean} updateUrl - Whether to update the URL (default: true)
    */
-  switchTab(tabName) {
+  switchTab(tabName, updateUrl = true) {
     console.log("Switching to tab:", tabName);
 
     // Hide all tab contents
@@ -161,6 +210,21 @@ const UIControls = {
     const selectedButton = document.querySelector(`[data-tab="${tabName}"]`);
     if (selectedButton) {
       selectedButton.classList.add("active");
+    }
+
+    // Update URL
+    if (updateUrl) {
+      const newPath = this.tabToRoute[tabName] || '/explore';
+      const currentPath = window.location.pathname;
+
+      if (currentPath !== newPath) {
+        // Use replaceState for initial load, pushState for navigation
+        if (currentPath === '/' || currentPath === '' || !this.routes[currentPath]) {
+          history.replaceState({ tab: tabName }, '', newPath);
+        } else {
+          history.pushState({ tab: tabName }, '', newPath);
+        }
+      }
     }
 
     // Initialize tab-specific content

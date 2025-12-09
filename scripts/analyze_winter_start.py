@@ -236,8 +236,12 @@ def main():
     print(f"  - Tilastoitava jakso: vähintään {MIN_COLD_SPELL_DAYS} päivää")
     print(f"  - Lasketaan vyöhykkeen keskiarvo kaikista asemista")
 
-    # Lue data
-    csv_file = DATA_RAW / 'weather_data_2022_2025_all.csv'
+    # Lue data - etsi dynaamisesti uusin tiedosto
+    csv_files = list(DATA_RAW.glob('weather_data_*_all.csv'))
+    if not csv_files:
+        print(f"VIRHE: Ei löydy weather_data_*_all.csv tiedostoa kansiosta {DATA_RAW}")
+        return
+    csv_file = max(csv_files, key=lambda f: f.stat().st_mtime)
     print(f"\nLuetaan tiedosto: {csv_file}")
 
     df = pd.read_csv(csv_file)
@@ -339,6 +343,7 @@ def main():
                         'max_temp': s['max_temp']
                     } for s in r['warm_spells']
                 ]
+            }
             json_data.append(json_entry)
 
         output_json = DATA_ANALYSIS / 'winter_analysis_detailed.json'

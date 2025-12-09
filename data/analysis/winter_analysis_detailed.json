@@ -1,6 +1,162 @@
 [
   {
     "zone": "Etelä-Suomi",
+    "season": "2020/2021",
+    "season_start": "2021-01-02",
+    "season_end": "2021-03-12",
+    "total_days": 70,
+    "frost_days": 58,
+    "coverage_pct": 82.9,
+    "fragmentation_index": 0.17,
+    "cold_spells_count": 5,
+    "warm_interruptions": 2,
+    "longest_cold_spell_days": 29,
+    "coldest_temp": -16.9,
+    "cold_spells": [
+      {
+        "start": "2020-12-08",
+        "end": "2020-12-11",
+        "duration": 4,
+        "min_temp": -1.9
+      },
+      {
+        "start": "2021-01-02",
+        "end": "2021-01-21",
+        "duration": 20,
+        "min_temp": -16.9
+      },
+      {
+        "start": "2021-01-27",
+        "end": "2021-02-24",
+        "duration": 29,
+        "min_temp": -15.5
+      },
+      {
+        "start": "2021-03-04",
+        "end": "2021-03-12",
+        "duration": 9,
+        "min_temp": -11.3
+      },
+      {
+        "start": "2021-03-17",
+        "end": "2021-03-20",
+        "duration": 4,
+        "min_temp": -5.6
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2021-01-22",
+        "end": "2021-01-26",
+        "duration": 5,
+        "max_temp": 2.6
+      },
+      {
+        "start": "2021-02-25",
+        "end": "2021-03-03",
+        "duration": 7,
+        "max_temp": 3.7
+      }
+    ]
+  },
+  {
+    "zone": "Etelä-Suomi",
+    "season": "2021/2022",
+    "season_start": "2021-11-26",
+    "season_end": "2022-04-02",
+    "total_days": 128,
+    "frost_days": 84,
+    "coverage_pct": 65.6,
+    "fragmentation_index": 0.25,
+    "cold_spells_count": 9,
+    "warm_interruptions": 4,
+    "longest_cold_spell_days": 24,
+    "coldest_temp": -14.0,
+    "cold_spells": [
+      {
+        "start": "2021-11-26",
+        "end": "2021-12-11",
+        "duration": 16,
+        "min_temp": -14.0
+      },
+      {
+        "start": "2021-12-20",
+        "end": "2022-01-12",
+        "duration": 24,
+        "min_temp": -12.2
+      },
+      {
+        "start": "2022-01-20",
+        "end": "2022-01-23",
+        "duration": 4,
+        "min_temp": -5.4
+      },
+      {
+        "start": "2022-01-28",
+        "end": "2022-02-05",
+        "duration": 9,
+        "min_temp": -9.8
+      },
+      {
+        "start": "2022-02-07",
+        "end": "2022-02-09",
+        "duration": 3,
+        "min_temp": -0.9
+      },
+      {
+        "start": "2022-02-18",
+        "end": "2022-02-23",
+        "duration": 6,
+        "min_temp": -6.9
+      },
+      {
+        "start": "2022-03-03",
+        "end": "2022-03-05",
+        "duration": 3,
+        "min_temp": -3.1
+      },
+      {
+        "start": "2022-03-07",
+        "end": "2022-03-10",
+        "duration": 4,
+        "min_temp": -3.2
+      },
+      {
+        "start": "2022-03-29",
+        "end": "2022-04-02",
+        "duration": 5,
+        "min_temp": -3.5
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2021-12-12",
+        "end": "2021-12-19",
+        "duration": 8,
+        "max_temp": 2.9
+      },
+      {
+        "start": "2022-02-13",
+        "end": "2022-02-17",
+        "duration": 5,
+        "max_temp": 1.5
+      },
+      {
+        "start": "2022-02-28",
+        "end": "2022-03-02",
+        "duration": 3,
+        "max_temp": 1.0
+      },
+      {
+        "start": "2022-03-11",
+        "end": "2022-03-26",
+        "duration": 16,
+        "max_temp": 4.3
+      }
+    ]
+  },
+  {
+    "zone": "Etelä-Suomi",
     "season": "2022/2023",
     "season_start": "2022-11-18",
     "season_end": "2023-04-04",
@@ -320,6 +476,168 @@
         "end": "2025-01-31",
         "duration": 9,
         "max_temp": 3.2
+      }
+    ]
+  },
+  {
+    "zone": "Keski-Suomi",
+    "season": "2020/2021",
+    "season_start": "2020-12-08",
+    "season_end": "2021-03-22",
+    "total_days": 105,
+    "frost_days": 89,
+    "coverage_pct": 84.8,
+    "fragmentation_index": 0.1,
+    "cold_spells_count": 7,
+    "warm_interruptions": 2,
+    "longest_cold_spell_days": 31,
+    "coldest_temp": -22.8,
+    "cold_spells": [
+      {
+        "start": "2020-11-27",
+        "end": "2020-11-30",
+        "duration": 4,
+        "min_temp": -1.2
+      },
+      {
+        "start": "2020-12-08",
+        "end": "2020-12-15",
+        "duration": 8,
+        "min_temp": -4.8
+      },
+      {
+        "start": "2020-12-24",
+        "end": "2020-12-30",
+        "duration": 7,
+        "min_temp": -5.4
+      },
+      {
+        "start": "2021-01-01",
+        "end": "2021-01-23",
+        "duration": 23,
+        "min_temp": -22.8
+      },
+      {
+        "start": "2021-01-25",
+        "end": "2021-02-24",
+        "duration": 31,
+        "min_temp": -21.3
+      },
+      {
+        "start": "2021-03-03",
+        "end": "2021-03-13",
+        "duration": 11,
+        "min_temp": -17.9
+      },
+      {
+        "start": "2021-03-16",
+        "end": "2021-03-22",
+        "duration": 7,
+        "min_temp": -8.3
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2020-12-19",
+        "end": "2020-12-23",
+        "duration": 5,
+        "max_temp": 3.5
+      },
+      {
+        "start": "2021-02-25",
+        "end": "2021-03-02",
+        "duration": 6,
+        "max_temp": 2.9
+      }
+    ]
+  },
+  {
+    "zone": "Keski-Suomi",
+    "season": "2021/2022",
+    "season_start": "2021-11-21",
+    "season_end": "2022-04-07",
+    "total_days": 138,
+    "frost_days": 117,
+    "coverage_pct": 84.8,
+    "fragmentation_index": 0.09,
+    "cold_spells_count": 10,
+    "warm_interruptions": 2,
+    "longest_cold_spell_days": 25,
+    "coldest_temp": -20.5,
+    "cold_spells": [
+      {
+        "start": "2021-11-21",
+        "end": "2021-12-13",
+        "duration": 23,
+        "min_temp": -18.5
+      },
+      {
+        "start": "2021-12-19",
+        "end": "2022-01-12",
+        "duration": 25,
+        "min_temp": -20.5
+      },
+      {
+        "start": "2022-01-14",
+        "end": "2022-01-18",
+        "duration": 5,
+        "min_temp": -5.2
+      },
+      {
+        "start": "2022-01-20",
+        "end": "2022-01-23",
+        "duration": 4,
+        "min_temp": -7.9
+      },
+      {
+        "start": "2022-01-25",
+        "end": "2022-02-15",
+        "duration": 22,
+        "min_temp": -15.7
+      },
+      {
+        "start": "2022-02-17",
+        "end": "2022-02-24",
+        "duration": 8,
+        "min_temp": -12.7
+      },
+      {
+        "start": "2022-02-26",
+        "end": "2022-02-28",
+        "duration": 3,
+        "min_temp": -4.8
+      },
+      {
+        "start": "2022-03-03",
+        "end": "2022-03-10",
+        "duration": 8,
+        "min_temp": -6.1
+      },
+      {
+        "start": "2022-03-12",
+        "end": "2022-03-16",
+        "duration": 5,
+        "min_temp": -1.2
+      },
+      {
+        "start": "2022-03-26",
+        "end": "2022-04-07",
+        "duration": 13,
+        "min_temp": -7.0
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2021-12-14",
+        "end": "2021-12-16",
+        "duration": 3,
+        "max_temp": 0.8
+      },
+      {
+        "start": "2022-03-17",
+        "end": "2022-03-25",
+        "duration": 9,
+        "max_temp": 4.8
       }
     ]
   },
@@ -654,6 +972,132 @@
   },
   {
     "zone": "Lappi",
+    "season": "2020/2021",
+    "season_start": "2020-11-19",
+    "season_end": "2021-05-07",
+    "total_days": 170,
+    "frost_days": 152,
+    "coverage_pct": 89.4,
+    "fragmentation_index": 0.08,
+    "cold_spells_count": 5,
+    "warm_interruptions": 2,
+    "longest_cold_spell_days": 102,
+    "coldest_temp": -26.4,
+    "cold_spells": [
+      {
+        "start": "2020-11-19",
+        "end": "2021-02-28",
+        "duration": 102,
+        "min_temp": -26.4
+      },
+      {
+        "start": "2021-03-02",
+        "end": "2021-03-23",
+        "duration": 22,
+        "min_temp": -18.7
+      },
+      {
+        "start": "2021-04-01",
+        "end": "2021-04-03",
+        "duration": 3,
+        "min_temp": -1.8
+      },
+      {
+        "start": "2021-04-06",
+        "end": "2021-04-14",
+        "duration": 9,
+        "min_temp": -4.8
+      },
+      {
+        "start": "2021-04-23",
+        "end": "2021-05-07",
+        "duration": 15,
+        "min_temp": -3.5
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2021-03-27",
+        "end": "2021-03-31",
+        "duration": 5,
+        "max_temp": 2.0
+      },
+      {
+        "start": "2021-04-15",
+        "end": "2021-04-22",
+        "duration": 8,
+        "max_temp": 5.8
+      }
+    ]
+  },
+  {
+    "zone": "Lappi",
+    "season": "2021/2022",
+    "season_start": "2021-10-18",
+    "season_end": "2022-05-05",
+    "total_days": 200,
+    "frost_days": 178,
+    "coverage_pct": 89.0,
+    "fragmentation_index": 0.1,
+    "cold_spells_count": 5,
+    "warm_interruptions": 3,
+    "longest_cold_spell_days": 127,
+    "coldest_temp": -23.8,
+    "cold_spells": [
+      {
+        "start": "2021-10-18",
+        "end": "2021-10-28",
+        "duration": 11,
+        "min_temp": -9.9
+      },
+      {
+        "start": "2021-11-05",
+        "end": "2022-03-11",
+        "duration": 127,
+        "min_temp": -23.8
+      },
+      {
+        "start": "2022-03-13",
+        "end": "2022-03-17",
+        "duration": 5,
+        "min_temp": -6.6
+      },
+      {
+        "start": "2022-03-24",
+        "end": "2022-04-15",
+        "duration": 23,
+        "min_temp": -10.7
+      },
+      {
+        "start": "2022-04-26",
+        "end": "2022-05-05",
+        "duration": 10,
+        "min_temp": -4.7
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2021-11-01",
+        "end": "2021-11-04",
+        "duration": 4,
+        "max_temp": 3.6
+      },
+      {
+        "start": "2022-03-18",
+        "end": "2022-03-23",
+        "duration": 6,
+        "max_temp": 4.4
+      },
+      {
+        "start": "2022-04-16",
+        "end": "2022-04-25",
+        "duration": 10,
+        "max_temp": 5.8
+      }
+    ]
+  },
+  {
+    "zone": "Lappi",
     "season": "2022/2023",
     "season_start": "2022-10-24",
     "season_end": "2023-04-16",
@@ -914,12 +1358,12 @@
     "zone": "Lappi",
     "season": "2025/2026",
     "season_start": "2025-11-07",
-    "season_end": "2025-11-28",
-    "total_days": 22,
-    "frost_days": 22,
-    "coverage_pct": 100.0,
+    "season_end": "2025-12-08",
+    "total_days": 32,
+    "frost_days": 31,
+    "coverage_pct": 96.9,
     "fragmentation_index": 0.0,
-    "cold_spells_count": 1,
+    "cold_spells_count": 2,
     "warm_interruptions": 0,
     "longest_cold_spell_days": 22,
     "coldest_temp": -19.9,
@@ -929,9 +1373,147 @@
         "end": "2025-11-28",
         "duration": 22,
         "min_temp": -19.9
+      },
+      {
+        "start": "2025-11-30",
+        "end": "2025-12-08",
+        "duration": 9,
+        "min_temp": -15.1
       }
     ],
     "warm_spells": []
+  },
+  {
+    "zone": "Pohjois-Suomi",
+    "season": "2020/2021",
+    "season_start": "2020-11-24",
+    "season_end": "2021-03-23",
+    "total_days": 120,
+    "frost_days": 111,
+    "coverage_pct": 92.5,
+    "fragmentation_index": 0.06,
+    "cold_spells_count": 5,
+    "warm_interruptions": 2,
+    "longest_cold_spell_days": 66,
+    "coldest_temp": -26.9,
+    "cold_spells": [
+      {
+        "start": "2020-11-24",
+        "end": "2020-12-04",
+        "duration": 11,
+        "min_temp": -5.0
+      },
+      {
+        "start": "2020-12-08",
+        "end": "2020-12-19",
+        "duration": 12,
+        "min_temp": -8.5
+      },
+      {
+        "start": "2020-12-24",
+        "end": "2021-02-27",
+        "duration": 66,
+        "min_temp": -26.9
+      },
+      {
+        "start": "2021-03-02",
+        "end": "2021-03-23",
+        "duration": 22,
+        "min_temp": -18.7
+      },
+      {
+        "start": "2021-04-06",
+        "end": "2021-04-09",
+        "duration": 4,
+        "min_temp": -1.7
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2020-12-05",
+        "end": "2020-12-07",
+        "duration": 3,
+        "max_temp": 1.9
+      },
+      {
+        "start": "2020-12-20",
+        "end": "2020-12-23",
+        "duration": 4,
+        "max_temp": 3.2
+      }
+    ]
+  },
+  {
+    "zone": "Pohjois-Suomi",
+    "season": "2021/2022",
+    "season_start": "2021-11-19",
+    "season_end": "2022-04-08",
+    "total_days": 141,
+    "frost_days": 131,
+    "coverage_pct": 92.9,
+    "fragmentation_index": 0.04,
+    "cold_spells_count": 8,
+    "warm_interruptions": 1,
+    "longest_cold_spell_days": 61,
+    "coldest_temp": -20.0,
+    "cold_spells": [
+      {
+        "start": "2021-11-07",
+        "end": "2021-11-09",
+        "duration": 3,
+        "min_temp": -5.5
+      },
+      {
+        "start": "2021-11-13",
+        "end": "2021-11-15",
+        "duration": 3,
+        "min_temp": -3.4
+      },
+      {
+        "start": "2021-11-19",
+        "end": "2022-01-18",
+        "duration": 61,
+        "min_temp": -20.0
+      },
+      {
+        "start": "2022-01-20",
+        "end": "2022-01-23",
+        "duration": 4,
+        "min_temp": -12.3
+      },
+      {
+        "start": "2022-01-25",
+        "end": "2022-03-01",
+        "duration": 36,
+        "min_temp": -18.7
+      },
+      {
+        "start": "2022-03-03",
+        "end": "2022-03-16",
+        "duration": 14,
+        "min_temp": -9.3
+      },
+      {
+        "start": "2022-03-25",
+        "end": "2022-04-08",
+        "duration": 15,
+        "min_temp": -7.7
+      },
+      {
+        "start": "2022-04-26",
+        "end": "2022-04-29",
+        "duration": 4,
+        "min_temp": -2.3
+      }
+    ],
+    "warm_spells": [
+      {
+        "start": "2022-03-17",
+        "end": "2022-03-22",
+        "duration": 6,
+        "max_temp": 4.2
+      }
+    ]
   },
   {
     "zone": "Pohjois-Suomi",
@@ -1217,7 +1799,7 @@
     "frost_days": 14,
     "coverage_pct": 100.0,
     "fragmentation_index": 0.0,
-    "cold_spells_count": 1,
+    "cold_spells_count": 2,
     "warm_interruptions": 0,
     "longest_cold_spell_days": 14,
     "coldest_temp": -8.6,
@@ -1227,6 +1809,12 @@
         "end": "2025-11-27",
         "duration": 14,
         "min_temp": -8.6
+      },
+      {
+        "start": "2025-12-06",
+        "end": "2025-12-08",
+        "duration": 3,
+        "min_temp": -2.3
       }
     ],
     "warm_spells": []

@@ -49,6 +49,7 @@ venv.bak/
 # Data files (keep compressed versions, ignore large CSVs)
 *.csv
 !example_*.csv
+visualization/data/**/*.json
 
 # Logs
 *.log

@@ -1,620 +1,952 @@
 /* Timeline and control styles */
 
 #timeline-container {
-    background: white;
-    border-top: 1px solid #ddd;
-    padding: 1rem 2rem;
+  background: white;
+  border-top: 1px solid #ddd;
+  padding: 1rem 2rem;
 }
 
 #timeline-controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 #timeline-controls button {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.2s;
-    min-width: 40px;
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s;
+  min-width: 40px;
 }
 
 #timeline-controls button:hover {
-    background: #2980b9;
-    transform: scale(1.05);
+  background: #2980b9;
+  transform: scale(1.05);
 }
 
 #timeline-controls button:active {
-    transform: scale(0.95);
+  transform: scale(0.95);
 }
 
 #btn-play {
-    background: #27ae60;
-    font-size: 18px;
+  background: #27ae60;
+  font-size: 18px;
 }
 
 #btn-play:hover {
-    background: #229954;
+  background: #229954;
 }
 
 #btn-play.playing {
-    background: #e74c3c;
+  background: #e74c3c;
 }
 
 #btn-play.playing:hover {
-    background: #c0392b;
+  background: #c0392b;
 }
 
 .speed-control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .speed-control label {
-    font-weight: 500;
+  font-weight: 500;
 }
 
 #speed-slider {
-    width: 150px;
-    cursor: pointer;
+  width: 150px;
+  cursor: pointer;
 }
 
 #speed-value {
-    font-weight: 600;
-    color: #3498db;
-    min-width: 50px;
+  font-weight: 600;
+  color: #3498db;
+  min-width: 50px;
 }
 
 /* Anomaly Timeline with Brush & Zoom */
 #anomaly-timeline {
-    margin-bottom: 1rem;
-    transition: all 0.3s ease;
-    overflow: hidden;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  overflow: hidden;
 }
 
 #anomaly-timeline.anomaly-timeline-visible {
-    max-height: 300px;
-    opacity: 1;
+  max-height: 300px;
+  opacity: 1;
 }
 
 #anomaly-timeline.anomaly-timeline-hidden {
-    max-height: 0;
-    opacity: 0;
-    margin: 0;
-    padding: 0;
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .anomaly-timeline-header {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 0.5rem;
-    flex-wrap: wrap;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .anomaly-timeline-header h4 {
-    font-size: 0.9rem;
-    margin: 0;
-    color: #555;
+  font-size: 0.9rem;
+  margin: 0;
+  color: #555;
 }
 
 .anomaly-legend-inline {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.7rem;
-    color: #666;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.7rem;
+  color: #666;
 }
 
 .anomaly-legend-inline .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .cold-spell-icon {
-    display: inline-block;
-    width: 15px;
-    height: 10px;
-    background: rgba(33, 113, 181, 0.5);
-    border: 1px solid rgba(33, 113, 181, 0.8);
-    vertical-align: middle;
+  display: inline-block;
+  width: 15px;
+  height: 10px;
+  background: rgba(33, 113, 181, 0.5);
+  border: 1px solid rgba(33, 113, 181, 0.8);
+  vertical-align: middle;
 }
 
 .warm-spell-icon {
-    display: inline-block;
-    width: 15px;
-    height: 6px;
-    background: rgba(253, 174, 107, 0.6);
-    border: 1px solid rgba(253, 174, 107, 0.9);
-    vertical-align: middle;
+  display: inline-block;
+  width: 15px;
+  height: 6px;
+  background: rgba(253, 174, 107, 0.6);
+  border: 1px solid rgba(253, 174, 107, 0.9);
+  vertical-align: middle;
 }
 
 .winter-start-icon {
-    color: #4a90e2;
+  color: #4a90e2;
 }
 
 .winter-start-icon::before {
-    content: "┊";
+  content: "┊";
 }
 
 .winter-end-icon {
-    color: #e27d60;
+  color: #e27d60;
 }
 
 .winter-end-icon::before {
-    content: "┊";
+  content: "┊";
 }
 
 .brush-hint {
-    font-size: 0.75rem;
-    color: #999;
-    font-style: italic;
-    margin-left: auto;
+  font-size: 0.75rem;
+  color: #999;
+  font-style: italic;
+  margin-left: auto;
 }
 
 /* Focus (Detail) and Context (Overview) charts */
 .anomaly-chart {
-    width: 100%;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #fafafa;
+  width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
 }
 
 #anomaly-focus {
-    height: 130px;
-    margin-bottom: 0.5rem;
+  height: 130px;
+  margin-bottom: 0.5rem;
 }
 
 #anomaly-context {
-    height: 70px;
-    cursor: crosshair;
+  height: 70px;
+  cursor: crosshair;
 }
 
 #anomaly-context:hover {
-    border-color: #3498db;
-    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+  border-color: #3498db;
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
 }
 
 /* D3 Brush Styling */
 .brush .selection {
-    fill: rgba(52, 152, 219, 0.3);
-    stroke: #3498db;
-    stroke-width: 1px;
+  fill: rgba(52, 152, 219, 0.3);
+  stroke: #3498db;
+  stroke-width: 1px;
 }
 
 .brush .handle {
-    fill: #3498db;
+  fill: #3498db;
 }
 
 .brush .overlay {
-    cursor: crosshair;
+  cursor: crosshair;
 }
 
 /* Zone labels */
 .zone-label {
-    font-size: 9px;
-    fill: #666;
+  font-size: 9px;
+  fill: #666;
 }
 
 /* Anomaly bars */
 .anomaly-bar {
-    opacity: 0.85;
-    transition: opacity 0.2s;
+  opacity: 0.85;
+  transition: opacity 0.2s;
 }
 
 .anomaly-bar:hover {
-    opacity: 1;
-    stroke-width: 2px;
+  opacity: 1;
+  stroke-width: 2px;
 }
 
 /* Winter period styling */
 .winter-period {
-    fill: rgba(173, 216, 230, 0.2);
+  fill: rgba(173, 216, 230, 0.2);
 }
 
 .winter-start-line {
-    stroke: #4a90e2;
-    stroke-width: 2px;
-    stroke-dasharray: 5, 3;
+  stroke: #4a90e2;
+  stroke-width: 2px;
+  stroke-dasharray: 5, 3;
 }
 
 .winter-end-line {
-    stroke: #e27d60;
-    stroke-width: 2px;
-    stroke-dasharray: 5, 3;
+  stroke: #e27d60;
+  stroke-width: 2px;
+  stroke-dasharray: 5, 3;
+}
+
+.slippery-start-line {
+  stroke: #ff9800;
+  stroke-width: 2px;
+  stroke-dasharray: 4, 2;
+}
+
+.first-frost-line {
+  stroke: #00bcd4;
+  stroke-width: 2px;
+  stroke-dasharray: 4, 2;
+}
+
+/* Hover area for better mouse targeting on thin lines */
+.line-hover-area {
+  pointer-events: all;
+}
+
+.line-hover-area:hover {
+  /* Hover effect is handled via JavaScript */
 }
 
 /* Current date indicator */
 .current-date-line {
-    stroke: #e74c3c;
-    stroke-width: 2px;
+  stroke: #e74c3c;
+  stroke-width: 2px;
 }
 
 /* Date range display */
 .date-range-display {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    color: #666;
-    margin-top: 0.25rem;
-    padding: 0 5px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 0.25rem;
+  padding: 0 5px;
 }
 
 .date-range-display .selected-range {
-    font-weight: 600;
-    color: #3498db;
+  font-weight: 600;
+  color: #3498db;
 }
 
 /* D3 axis styling */
 .x-axis path,
 .x-axis line {
-    stroke: #ccc;
+  stroke: #ccc;
 }
 
 .x-axis text {
-    font-size: 10px;
-    fill: #666;
+  font-size: 10px;
+  fill: #666;
 }
 
 /* Date Slider */
 #date-slider-container {
-    position: relative;
+  position: relative;
 }
 
 #date-slider-labels {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: #666;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
 }
 
 #date-current {
-    font-weight: 600;
-    color: #2c3e50;
+  font-weight: 600;
+  color: #2c3e50;
 }
 
 #date-slider {
-    width: 100%;
-    height: 8px;
-    border-radius: 4px;
-    background: #ddd;
-    outline: none;
-    cursor: pointer;
-    -webkit-appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: #ddd;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
 }
 
 #date-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #3498db;
-    cursor: pointer;
-    transition: all 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3498db;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 #date-slider::-webkit-slider-thumb:hover {
-    background: #2980b9;
-    transform: scale(1.2);
+  background: #2980b9;
+  transform: scale(1.2);
 }
 
 #date-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: #3498db;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #3498db;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
 }
 
 #date-slider::-moz-range-thumb:hover {
-    background: #2980b9;
-    transform: scale(1.2);
+  background: #2980b9;
+  transform: scale(1.2);
 }
 
 /* Progress Bars */
 .progress-bar {
-    width: 100%;
-    height: 24px;
-    background: #ecf0f1;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
+  width: 100%;
+  height: 24px;
+  background: #ecf0f1;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
 }
 
 .progress-bar.small {
-    height: 16px;
-    border-radius: 8px;
+  height: 16px;
+  border-radius: 8px;
 }
 
 .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #3498db, #2ecc71);
-    transition: width 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.8rem;
-    font-weight: 600;
+  height: 100%;
+  background: linear-gradient(90deg, #3498db, #2ecc71);
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
-/* Fetcher Controls */
-.fetcher-controls {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 8px;
-    margin-bottom: 1.5rem;
+/* Data Management Section */
+#data-management-tab {
+  background: white;
 }
 
-#date-range-controls {
-    margin: 1rem 0;
+#data-fetcher {
+  padding: 1.5rem 2rem;
+  max-width: 900px;
 }
 
-#date-range-controls input[type="date"] {
-    padding: 0.4rem 0.8rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
+#data-fetcher h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #3498db;
 }
 
-/* Zone Progress List */
-#zone-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+#data-fetcher h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.75rem;
 }
 
-.zone-progress-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+/* Data Status Card - simple style matching app */
+.data-status-card {
+  background: #f8f9fa;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.zone-status-icon {
-    font-size: 1.5rem;
-    width: 30px;
-    text-align: center;
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
 }
 
-.zone-name {
-    min-width: 150px;
-    font-weight: 500;
+.status-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
 }
 
-.zone-progress-bar {
-    flex: 1;
+.status-icon {
+  font-size: 0.9rem;
 }
 
-.zone-progress-text {
-    min-width: 120px;
-    text-align: right;
-    font-size: 0.9rem;
-    color: #666;
+.status-icon.online {
+  color: #27ae60;
+}
+
+.status-icon.offline {
+  color: #e74c3c;
+}
+
+.status-icon.loading {
+  color: #f39c12;
+}
+
+.status-details {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  font-size: 0.85rem;
+}
+
+.status-label {
+  color: #666;
+}
+
+.status-value {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+/* Zone Coverage Section */
+.zone-coverage-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+#zone-coverage-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem 1.5rem;
+}
+
+.zone-coverage-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.zone-coverage-name {
+  min-width: 100px;
+  color: #555;
+}
+
+.zone-coverage-bar {
+  flex: 1;
+  height: 6px;
+  background: #ecf0f1;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.zone-coverage-fill {
+  height: 100%;
+  background: #3498db;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.zone-coverage-text {
+  min-width: 70px;
+  text-align: right;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+/* Data Actions - matches control-panel style */
+.data-actions {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Date Range Fetch Section */
+.date-range-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.section-description {
+  color: #888;
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.date-range-form {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-input-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #555;
+}
+
+.date-input-group input[type="date"] {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+}
+
+.date-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.date-range-info {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.date-range-info .days-count {
+  font-weight: 600;
+  color: #3498db;
+}
+
+.date-range-info .warning {
+  color: #e67e22;
+}
+
+/* Operation Status */
+.operation-status {
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.operation-status.hidden {
+  display: none;
+}
+
+.operation-status.success {
+  background: #d4edda;
+  border-color: #28a745;
+}
+
+.operation-status.error {
+  background: #f8d7da;
+  border-color: #dc3545;
+}
+
+.operation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.operation-icon {
+  font-size: 1rem;
+}
+
+.operation-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+.progress-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progress-bar-modern {
+  flex: 1;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill-modern {
+  height: 100%;
+  width: 0%;
+  background: #3498db;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  min-width: 40px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+/* Activity Log */
+.activity-log-section {
+  margin-bottom: 1rem;
+}
+
+.log-container {
+  max-height: 150px;
+  overflow-y: auto;
+  background: #f8f9fa;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
+  font-size: 0.8rem;
+}
+
+.log-entry {
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  margin-bottom: 0.2rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.log-entry:last-child {
+  margin-bottom: 0;
+}
+
+.log-entry.info {
+  color: #555;
+}
+
+.log-entry.success {
+  color: #27ae60;
+  background: rgba(39, 174, 96, 0.08);
+}
+
+.log-entry.error {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.08);
+}
+
+.log-entry.warning {
+  color: #f39c12;
+  background: rgba(243, 156, 18, 0.08);
+}
+
+.log-time {
+  color: #999;
+  font-size: 0.75rem;
+  min-width: 50px;
 }
 
 /* Compare Years Tab Styles */
 #compare-years-container {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #f5f5f5;
 }
 
 #compare-controls {
-    background: white;
-    padding: 1rem 2rem;
-    display: flex;
-    gap: 2rem;
-    align-items: center;
-    border-bottom: 1px solid #ddd;
-    flex-wrap: wrap;
+  background: white;
+  padding: 1rem 2rem;
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  flex-wrap: wrap;
 }
 
 .compare-legend-inline {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.75rem;
-    color: #666;
-    margin-left: auto;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #666;
+  margin-left: auto;
 }
 
 .compare-legend-inline .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 #years-timeline-container {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0;
-    background: white;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+  background: white;
 }
 
 #years-timeline {
-    width: 100%;
+  width: 100%;
 }
 
 /* Year row styling */
 .year-row {
-    display: flex;
-    border-bottom: 1px solid #eee;
-    min-height: 28px;
+  display: flex;
+  border-bottom: 1px solid #eee;
+  min-height: 28px;
 }
 
 .year-row:last-child {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .year-row:hover {
-    background: #fafafa;
+  background: #fafafa;
 }
 
 .year-label {
-    width: 80px;
-    min-width: 80px;
-    padding: 4px 8px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #2c3e50;
-    background: #f8f9fa;
-    border-right: 1px solid #ddd;
-    display: flex;
-    align-items: center;
+  width: 80px;
+  min-width: 80px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2c3e50;
+  background: #f8f9fa;
+  border-right: 1px solid #ddd;
+  display: flex;
+  align-items: center;
 }
 
 .year-timeline-chart {
-    flex: 1;
-    height: 28px;
-    position: relative;
+  flex: 1;
+  height: 28px;
+  position: relative;
 }
 
 /* Month grid lines */
 .month-grid-line {
-    stroke: #eee;
-    stroke-width: 1;
+  stroke: #eee;
+  stroke-width: 1;
 }
 
 .month-label {
-    font-size: 9px;
-    fill: #999;
+  font-size: 9px;
+  fill: #999;
 }
 
 /* Header row */
 .year-row.header {
-    background: #f0f0f0;
-    border-bottom: 2px solid #ddd;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  background: #f0f0f0;
+  border-bottom: 2px solid #ddd;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .year-row.header .year-label {
-    background: #e9ecef;
-    font-weight: 700;
+  background: #e9ecef;
+  font-weight: 700;
 }
 
 /* Zone rows within year (when showing all zones) */
 .zone-row {
-    display: flex;
-    min-height: 20px;
+  display: flex;
+  min-height: 20px;
 }
 
 .zone-label-small {
-    width: 100px;
-    min-width: 100px;
-    padding: 2px 8px 2px 20px;
-    font-size: 0.7rem;
-    color: #666;
-    background: #fafafa;
-    border-right: 1px solid #eee;
-    display: flex;
-    align-items: center;
+  width: 100px;
+  min-width: 100px;
+  padding: 2px 8px 2px 20px;
+  font-size: 0.7rem;
+  color: #666;
+  background: #fafafa;
+  border-right: 1px solid #eee;
+  display: flex;
+  align-items: center;
 }
 
 .zone-timeline-chart {
-    flex: 1;
-    height: 20px;
-    position: relative;
+  flex: 1;
+  height: 20px;
+  position: relative;
 }
 
 /* Alternating year backgrounds */
 .year-group:nth-child(even) {
-    background: #fafafa;
+  background: #fafafa;
 }
 
 .year-group:nth-child(odd) {
-    background: white;
+  background: white;
 }
 
 /* Year group header */
 .year-group-header {
-    display: flex;
-    border-bottom: 1px solid #ddd;
-    background: #f0f4f8;
-    min-height: 24px;
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  background: #f0f4f8;
+  min-height: 24px;
 }
 
 .year-group-header .year-label {
-    background: #e3e9ef;
-    font-weight: 700;
-    font-size: 0.9rem;
+  background: #e3e9ef;
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 /* Season bars */
 .season-bar {
-    opacity: 0.7;
+  opacity: 0.7;
 }
 
 .season-bar.cold-spell {
-    fill: rgba(33, 113, 181, 0.6);
+  fill: rgba(33, 113, 181, 0.6);
 }
 
 .season-bar.warm-spell {
-    fill: rgba(253, 174, 107, 0.5);
+  fill: rgba(253, 174, 107, 0.5);
 }
 
 /* Winter markers */
 .winter-marker {
-    stroke-width: 2;
-    stroke-dasharray: 3, 2;
+  stroke-width: 2;
+  stroke-dasharray: 3, 2;
 }
 
 .winter-marker.start {
-    stroke: #4a90e2;
+  stroke: #4a90e2;
 }
 
 .winter-marker.end {
-    stroke: #e27d60;
+  stroke: #e27d60;
 }
 
 /* Anomaly markers in compare view */
 .compare-anomaly-bar {
-    opacity: 0.85;
-    cursor: pointer;
+  opacity: 0.85;
+  cursor: pointer;
 }
 
 .compare-anomaly-bar:hover {
-    opacity: 1;
+  opacity: 1;
 }
 
 /* Anomaly icons for legend */
 .anomaly-icon {
-    display: inline-block;
-    width: 12px;
-    height: 8px;
-    border-radius: 2px;
-    vertical-align: middle;
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
+  vertical-align: middle;
 }
 
 .anomaly-icon.extreme-cold {
-    background: #2171b5;
+  background: #2171b5;
 }
 
 .anomaly-icon.cold-snap {
-    background: #6baed6;
+  background: #6baed6;
 }
 
 .anomaly-icon.heat-wave {
-    background: #de2d26;
+  background: #de2d26;
 }
 
 .anomaly-icon.return-winter {
-    background: #756bb1;
+  background: #756bb1;
 }
 
 .anomaly-icon.temp-jump {
-    background: #fdae6b;
+  background: #fdae6b;
+}
+
+/* Slippery risk icons for legend */
+.slippery-start-icon {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: #ff9800;
+  border: none;
+  vertical-align: middle;
+  position: relative;
+}
+
+.slippery-start-icon::before,
+.slippery-start-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 3px;
+  background: #ff9800;
+}
+
+.slippery-start-icon::before {
+  top: -4px;
+}
+
+.slippery-start-icon::after {
+  bottom: -4px;
+}
+
+.slippery-bar-icon {
+  display: inline-block;
+  width: 15px;
+  height: 6px;
+  background: rgba(255, 152, 0, 0.8);
+  border: 1px solid #e65100;
+  vertical-align: middle;
 }

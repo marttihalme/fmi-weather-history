@@ -1,9 +1,11 @@
-"""Kerää 15 vuoden historiadata FMI:stä vyöhykkeittäin (2010-2025)."""
+"""Kerää historiadata FMI:stä vyöhykkeittäin."""
 import pandas as pd
 from fmiopendata.wfs import download_stored_query
 from datetime import datetime, timedelta
 import time
 from pathlib import Path
+import argparse
+import os
 
 # Määritä polut
 SCRIPT_DIR = Path(__file__).parent
@@ -18,7 +20,7 @@ ZONES = {
     "lappi": {"name": "Lappi", "lat_min": 66.0, "lat_max": 90.0}
 }
 
-# Aikaväli: 2022-2025 (3 vuotta - voidaan laajentaa myöhemmin)
+# Oletusaikaväli
 START_YEAR = 2015
 END_YEAR = 2025
 
@@ -85,35 +87,84 @@ def extract_data_to_dataframe(obs):
 
     return pd.DataFrame(all_data)
 
+def generate_quarters(start_date, end_date):
+    """Generoi neljännekset annetulle aikavälille."""
+    quarters = []
+    current = start_date
+
+    while current <= end_date:
+        # Määritä neljänneksen loppu
+        if current.month <= 3:
+            quarter_end = datetime(current.year, 3, 31)
+        elif current.month <= 6:
+            quarter_end = datetime(current.year, 6, 30)
+        elif current.month <= 9:
+            quarter_end = datetime(current.year, 9, 30)
+        else:
+            quarter_end = datetime(current.year, 12, 31)
+
+        # Varmista ettei ylitetä loppupäivää
+        if quarter_end > end_date:
+            quarter_end = end_date
+
+        quarters.append((
+            current.strftime("%Y-%m-%d"),
+            quarter_end.strftime("%Y-%m-%d")
+        ))
+
+        # Siirry seuraavaan neljännekseen
+        current = quarter_end + timedelta(days=1)
+
+    return quarters
+
+
 def main():
+    # Komentoriviargumentit
+    parser = argparse.ArgumentParser(description='Hae säädataa FMI:stä')
+    parser.add_argument('--start', type=str, help='Alkupäivä (YYYY-MM-DD)')
+    parser.add_argument('--end', type=str, help='Loppupäivä (YYYY-MM-DD)')
+    args = parser.parse_args()
+
+    # Määritä aikaväli
+    if args.start and args.end:
+        start_date = datetime.strptime(args.start, "%Y-%m-%d")
+        end_date = datetime.strptime(args.end, "%Y-%m-%d")
+        start_year = start_date.year
+        end_year = end_date.year
+        date_range_str = f"{args.start} - {args.end}"
+    else:
+        # Käytä oletusarvoja
+        start_date = datetime(START_YEAR, 1, 1)
+        end_date = datetime(END_YEAR, 12, 31)
+        start_year = START_YEAR
+        end_year = END_YEAR
+        date_range_str = f"{START_YEAR}-{END_YEAR}"
+
     print("=" * 70)
-    print(f"FMI HISTORIADATA {START_YEAR}-{END_YEAR} - Vyöhykkeittäinen keräys")
+    print(f"FMI HISTORIADATA {date_range_str} - Vyöhykkeittäinen keräys")
     print("=" * 70)
 
     all_dataframes = []
 
-    # Haetaan data vuosittain (API:n rajoitusten takia)
-    for year in range(START_YEAR, END_YEAR + 1):
-        print(f"\nVuosi {year}:")
+    # Generoi neljännekset
+    quarters = generate_quarters(start_date, end_date)
+    print(f"\nHaetaan {len(quarters)} jaksoa...")
 
-        # Jaa vuosi neljään neljännekseen (API ei tykkää liian suurista kyselyistä)
-        quarters = [
-            (f"{year}-01-01", f"{year}-03-31"),
-            (f"{year}-04-01", f"{year}-06-30"),
-            (f"{year}-07-01", f"{year}-09-30"),
-            (f"{year}-10-01", f"{year}-12-31")
-        ]
+    for i, (start, end) in enumerate(quarters, 1):
+        print(f"\nJakso {i}/{len(quarters)}: {start} - {end}")
+        obs = fetch_data_for_period(start, end)
 
-        for start, end in quarters:
-            obs = fetch_data_for_period(start, end)
+        if obs:
+            df = extract_data_to_dataframe(obs)
+            all_dataframes.append(df)
+            print(f"    [ok] Haettiin {len(df)} riviä")
 
-            if obs:
-                df = extract_data_to_dataframe(obs)
-                all_dataframes.append(df)
-                print(f"    ✓ Haettiin {len(df)} riviä")
+        # Viive API-kuorman vähentämiseksi
+        time.sleep(2)
 
-            # Viive API-kuorman vähentämiseksi
-            time.sleep(2)
+    if not all_dataframes:
+        print("\nEi dataa haettu!")
+        return
 
     # Yhdistä kaikki DataFramet
     print("\n" + "=" * 70)
@@ -123,20 +174,23 @@ def main():
     print(f"Yhteensä {len(final_df)} havaintoa")
     print(f"Aikaväli: {final_df['date'].min()} - {final_df['date'].max()}")
 
+    # Luo data/raw -kansio jos ei ole
+    DATA_RAW.mkdir(parents=True, exist_ok=True)
+
     # Tallenna kokonaisdata
-    output_file = DATA_RAW / f"weather_data_{START_YEAR}_{END_YEAR}_all.csv"
+    output_file = DATA_RAW / f"weather_data_{start_year}_{end_year}_all.csv"
     final_df.to_csv(output_file, index=False)
-    print(f"\n✓ Tallennettu: {output_file}")
+    print(f"\n[ok] Tallennettu: {output_file}")
 
     # Tallenna vyöhykkeittäin
     print("\nTallennetaan vyöhykkeittäin:")
     for zone_id, zone_info in ZONES.items():
         zone_df = final_df[final_df['zone'] == zone_id]
-        zone_file = DATA_RAW / f"weather_data_{START_YEAR}_{END_YEAR}_{zone_id}.csv"
+        zone_file = DATA_RAW / f"weather_data_{start_year}_{end_year}_{zone_id}.csv"
         zone_df.to_csv(zone_file, index=False)
 
         station_count = zone_df['station_name'].nunique()
-        print(f"  {zone_info['name']:20} {len(zone_df):8} riviä, {station_count:3} asemaa → {zone_file}")
+        print(f"  {zone_info['name']:20} {len(zone_df):8} riviä, {station_count:3} asemaa -> {zone_file}")
 
     # Tilastot
     print("\n" + "=" * 70)
@@ -150,7 +204,7 @@ def main():
         if col not in ['date', 'station_name', 'fmisid', 'latitude', 'longitude', 'zone', 'zone_name']:
             print(f"  - {col}")
 
-    print("\n✓ Valmis!")
+    print("\n[ok] Valmis!")
 
 if __name__ == "__main__":
     main()
