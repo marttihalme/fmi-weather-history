@@ -18,10 +18,31 @@ const TimelineController = {
   brush: null,
   brushSelection: null, // Current brush extent [startDate, endDate]
 
+  // Drag state for timeline scrubbing
+  isDragging: false,
+
   // Dimensions
   margin: { top: 5, right: 20, bottom: 25, left: 80 },
   focusHeight: 130,
   contextHeight: 70,
+  resizeTimeout: null,
+
+  // Visibility toggles for different element types
+  visibility: {
+    coldSpell: true,
+    warmSpell: true,
+    winterStart: true,
+    winterEnd: true,
+    slipperyStart: true,
+    slipperyBar: true,
+    frostMarker: true,
+    frostBar: true,
+    extremeCold: true,
+    coldSnap: true,
+    heatWave: true,
+    returnWinter: true,
+    tempJump: true,
+  },
 
   callbacks: {
     onDateChange: null,
@@ -47,6 +68,7 @@ const TimelineController = {
 
     this.initializeAnomalyTimeline();
     this.attachEventHandlers();
+    this.attachLegendToggles();
   },
 
   /**
@@ -87,7 +109,21 @@ const TimelineController = {
 
     // Get dimensions
     const containerWidth = focusContainer.clientWidth;
+
+    // Guard against zero/invalid width (element hidden or not yet rendered)
+    if (!containerWidth || containerWidth <= 0) {
+      console.warn("Timeline container has no width, skipping render");
+      return;
+    }
+
     const width = containerWidth - this.margin.left - this.margin.right;
+
+    // Ensure valid width after margins
+    if (width <= 0) {
+      console.warn("Timeline width too small after margins, skipping render");
+      return;
+    }
+
     const focusHeight = this.focusHeight - this.margin.top - this.margin.bottom;
     const contextHeight =
       this.contextHeight - this.margin.top - this.margin.bottom;
@@ -119,21 +155,19 @@ const TimelineController = {
       .domain([minDate, maxDate])
       .range([0, width]);
 
-    // Default brush selection: last 90 days or full range if less
-    const defaultDays = 90;
-    const rangeMs = maxDate - minDate;
-    const defaultRangeMs = defaultDays * 24 * 60 * 60 * 1000;
-    const brushStart =
-      rangeMs > defaultRangeMs
-        ? new Date(maxDate.getTime() - defaultRangeMs)
-        : minDate;
+    // Default brush selection: last 13 months or full range if less
+    const defaultMonths = 13;
+    const brushStart = new Date(maxDate);
+    brushStart.setMonth(brushStart.getMonth() - defaultMonths);
+    // If calculated start is before data range, use minDate
+    const effectiveBrushStart = brushStart < minDate ? minDate : brushStart;
 
     this.xScaleFocus = d3
       .scaleTime()
-      .domain([brushStart, maxDate])
+      .domain([effectiveBrushStart, maxDate])
       .range([0, width]);
 
-    this.brushSelection = [brushStart, maxDate];
+    this.brushSelection = [effectiveBrushStart, maxDate];
 
     // Create brush
     this.brush = d3
@@ -155,20 +189,54 @@ const TimelineController = {
       .call(this.brush);
 
     // Set initial brush position
-    const x0 = this.xScaleContext(brushStart);
+    const x0 = this.xScaleContext(effectiveBrushStart);
     const x1 = this.xScaleContext(maxDate);
     brushG.call(this.brush.move, [x0, x1]);
 
-    // Add click handler for focus chart
+    // Add interaction handlers for focus chart (click + drag to scrub)
+    const self = this;
+
+    this.focusSvg.on("mousedown", function(event) {
+      self.isDragging = true;
+      self.stop(); // Stop animation when starting to drag
+
+      const [x] = d3.pointer(event);
+      const clickedDate = self.xScaleFocus.invert(x);
+      self.jumpToClosestDate(clickedDate);
+    });
+
+    this.focusSvg.on("mousemove", function(event) {
+      if (self.isDragging) {
+        const [x] = d3.pointer(event);
+        const clickedDate = self.xScaleFocus.invert(x);
+        self.jumpToClosestDate(clickedDate);
+      }
+    });
+
+    this.focusSvg.on("mouseup", function(event) {
+      self.isDragging = false;
+    });
+
+    this.focusSvg.on("mouseleave", function(event) {
+      self.isDragging = false;
+    });
+
+    // Also add click handler for single clicks (when not dragging)
     this.focusSvg.on("click", (event) => {
       const [x] = d3.pointer(event);
       const clickedDate = this.xScaleFocus.invert(x);
       this.jumpToClosestDate(clickedDate);
     });
 
-    // Handle window resize
+    // Handle window resize with debounce
     window.addEventListener("resize", () => {
-      this.resizeTimeline();
+      // Debounce resize to avoid excessive redraws
+      if (this.resizeTimeout) {
+        clearTimeout(this.resizeTimeout);
+      }
+      this.resizeTimeout = setTimeout(() => {
+        this.resizeTimeline();
+      }, 150);
     });
   },
 
@@ -194,7 +262,34 @@ const TimelineController = {
     this.focusSvg.selectAll("*").remove();
     this.drawFocusChart(width, focusHeight);
 
-    // Re-add click handler
+    // Re-add interaction handlers (click + drag to scrub)
+    const self = this;
+
+    this.focusSvg.on("mousedown", function(event) {
+      self.isDragging = true;
+      self.stop();
+
+      const [x] = d3.pointer(event);
+      const clickedDate = self.xScaleFocus.invert(x);
+      self.jumpToClosestDate(clickedDate);
+    });
+
+    this.focusSvg.on("mousemove", function(event) {
+      if (self.isDragging) {
+        const [x] = d3.pointer(event);
+        const clickedDate = self.xScaleFocus.invert(x);
+        self.jumpToClosestDate(clickedDate);
+      }
+    });
+
+    this.focusSvg.on("mouseup", function(event) {
+      self.isDragging = false;
+    });
+
+    this.focusSvg.on("mouseleave", function(event) {
+      self.isDragging = false;
+    });
+
     this.focusSvg.on("click", (event) => {
       const [x] = d3.pointer(event);
       const clickedDate = this.xScaleFocus.invert(x);
@@ -243,6 +338,18 @@ const TimelineController = {
   drawContextChart(width, height) {
     if (!DataLoader.data.anomalies || this.dates.length === 0) return;
 
+    // Guard against invalid dimensions
+    if (!width || width <= 0 || !height || height <= 0 || !isFinite(width) || !isFinite(height)) {
+      console.warn("Invalid dimensions for context chart:", { width, height });
+      return;
+    }
+
+    // Guard against invalid scale
+    if (!this.xScaleContext) {
+      console.warn("Context chart: xScaleContext not initialized");
+      return;
+    }
+
     const zones = ["Etelä-Suomi", "Keski-Suomi", "Pohjois-Suomi", "Lappi"];
     const zoneHeight = height / zones.length;
     const xScale = this.xScaleContext;
@@ -267,7 +374,7 @@ const TimelineController = {
     });
 
     // Draw slippery risk periods (context view)
-    if (DataLoader.data.slipperyRisk) {
+    if (DataLoader.data.slipperyRisk && this.visibility.slipperyBar) {
       DataLoader.data.slipperyRisk.forEach((risk) => {
         const zoneIndex = zones.indexOf(risk.zone);
         if (zoneIndex === -1) return;
@@ -275,13 +382,21 @@ const TimelineController = {
         const y = zoneIndex * zoneHeight;
 
         // Draw slippery periods
-        if (risk.slippery_periods) {
+        if (this.visibility.slipperyBar && risk.slippery_periods) {
           risk.slippery_periods.forEach((period) => {
             const periodStart = new Date(period.start);
             const periodEnd = new Date(period.end);
 
+            // Skip invalid dates
+            if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) return;
+
             const x = xScale(periodStart);
-            const barWidth = Math.max(1, xScale(periodEnd) - x);
+            const endX = xScale(periodEnd);
+
+            // Skip if scale returns invalid values
+            if (!isFinite(x) || !isFinite(endX)) return;
+
+            const barWidth = Math.max(1, endX - x);
 
             this.contextSvg
               .append("rect")
@@ -302,7 +417,7 @@ const TimelineController = {
     }
 
     // Draw first frost markers (context view)
-    if (DataLoader.data.firstFrost) {
+    if (DataLoader.data.firstFrost && (this.visibility.frostMarker || this.visibility.frostBar)) {
       DataLoader.data.firstFrost.forEach((frost) => {
         const zoneIndex = zones.indexOf(frost.zone);
         if (zoneIndex === -1) return;
@@ -310,30 +425,41 @@ const TimelineController = {
         const y = zoneIndex * zoneHeight;
 
         // Draw first frost marker
-        if (frost.first_frost_date) {
+        if (this.visibility.frostMarker && frost.first_frost_date) {
           const frostDate = new Date(frost.first_frost_date);
-          const x = xScale(frostDate);
-
-          this.contextSvg
-            .append("line")
-            .attr("class", "first-frost-line")
-            .attr("x1", x)
-            .attr("y1", y)
-            .attr("x2", x)
-            .attr("y2", y + zoneHeight)
-            .attr("stroke", "#00bcd4")
-            .attr("stroke-width", 1.5)
-            .attr("stroke-dasharray", "2,2");
+          if (!isNaN(frostDate.getTime())) {
+            const x = xScale(frostDate);
+            if (isFinite(x)) {
+              this.contextSvg
+                .append("line")
+                .attr("class", "first-frost-line")
+                .attr("x1", x)
+                .attr("y1", y)
+                .attr("x2", x)
+                .attr("y2", y + zoneHeight)
+                .attr("stroke", "#00bcd4")
+                .attr("stroke-width", 1.5)
+                .attr("stroke-dasharray", "2,2");
+            }
+          }
         }
 
         // Draw frost periods
-        if (frost.frost_periods) {
+        if (this.visibility.frostBar && frost.frost_periods) {
           frost.frost_periods.forEach((period) => {
             const periodStart = new Date(period.start);
             const periodEnd = new Date(period.end);
 
+            // Skip invalid dates
+            if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) return;
+
             const x = xScale(periodStart);
-            const barWidth = Math.max(1, xScale(periodEnd) - x);
+            const endX = xScale(periodEnd);
+
+            // Skip if scale returns invalid values
+            if (!isFinite(x) || !isFinite(endX)) return;
+
+            const barWidth = Math.max(1, endX - x);
 
             this.contextSvg
               .append("rect")
@@ -349,7 +475,7 @@ const TimelineController = {
     }
 
     // Draw winter periods with cold spells (detailed view)
-    if (DataLoader.data.winterStarts) {
+    if (DataLoader.data.winterStarts && this.visibility.coldSpell) {
       DataLoader.data.winterStarts.forEach((winter) => {
         const zoneIndex = zones.indexOf(winter.zone);
         if (zoneIndex === -1) return;
@@ -362,8 +488,16 @@ const TimelineController = {
             const spellStart = new Date(spell.start);
             const spellEnd = new Date(spell.end);
 
+            // Skip invalid dates
+            if (isNaN(spellStart.getTime()) || isNaN(spellEnd.getTime())) return;
+
             const x = xScale(spellStart);
-            const barWidth = Math.max(1, xScale(spellEnd) - x);
+            const endX = xScale(spellEnd);
+
+            // Skip if scale returns invalid values
+            if (!isFinite(x) || !isFinite(endX)) return;
+
+            const barWidth = Math.max(1, endX - x);
 
             this.contextSvg
               .append("rect")
@@ -384,8 +518,16 @@ const TimelineController = {
               ? new Date(winter.season_end || winter.winter_end)
               : new Date(this.dates[this.dates.length - 1]);
 
+          // Skip invalid dates
+          if (isNaN(winterStart.getTime()) || isNaN(winterEnd.getTime())) return;
+
           const x = xScale(winterStart);
-          const barWidth = xScale(winterEnd) - x;
+          const endX = xScale(winterEnd);
+
+          // Skip if scale returns invalid values
+          if (!isFinite(x) || !isFinite(endX)) return;
+
+          const barWidth = endX - x;
 
           this.contextSvg
             .append("rect")
@@ -400,6 +542,16 @@ const TimelineController = {
 
     // Draw anomaly bars (simplified for context view)
     DataLoader.data.anomalies.forEach((anomaly) => {
+      // Check visibility for this anomaly type
+      let isVisible = false;
+      if (anomaly.type === "Äärimmäinen kylmyys") isVisible = this.visibility.extremeCold;
+      else if (anomaly.type === "Ankara pakkasjakso") isVisible = this.visibility.coldSnap;
+      else if (anomaly.type === "Hellejakso") isVisible = this.visibility.heatWave;
+      else if (anomaly.type === "Takatalvi") isVisible = this.visibility.returnWinter;
+      else if (anomaly.type === "Äkillinen lämpeneminen") isVisible = this.visibility.tempJump;
+
+      if (!isVisible) return;
+
       const startDate = anomaly.start_date || anomaly.date;
       if (!startDate) return;
 
@@ -407,11 +559,19 @@ const TimelineController = {
       if (zoneIndex === -1) return;
 
       const start = new Date(startDate);
+      // Skip if invalid date
+      if (isNaN(start.getTime())) return;
+
       const duration = anomaly.duration_days || 1;
       const end = new Date(start.getTime() + duration * 24 * 60 * 60 * 1000);
 
       const x = xScale(start);
-      const barWidth = Math.max(2, xScale(end) - x);
+      const endX = xScale(end);
+
+      // Skip if scale returns invalid values
+      if (!isFinite(x) || !isFinite(endX)) return;
+
+      const barWidth = Math.max(2, endX - x);
       const y = zoneIndex * zoneHeight + 2;
 
       this.contextSvg
@@ -442,6 +602,18 @@ const TimelineController = {
    */
   drawFocusChart(width, height) {
     if (!DataLoader.data.anomalies || this.dates.length === 0) return;
+
+    // Guard against invalid dimensions
+    if (!width || width <= 0 || !height || height <= 0 || !isFinite(width) || !isFinite(height)) {
+      console.warn("Invalid dimensions for focus chart:", { width, height });
+      return;
+    }
+
+    // Guard against invalid scales
+    if (!this.xScaleFocus) {
+      console.warn("Focus chart: xScaleFocus not initialized");
+      return;
+    }
 
     const zones = ["Etelä-Suomi", "Keski-Suomi", "Pohjois-Suomi", "Lappi"];
     const zoneHeight = height / zones.length;
@@ -477,7 +649,7 @@ const TimelineController = {
     });
 
     // Draw slippery risk periods (focus view with tooltips)
-    if (DataLoader.data.slipperyRisk) {
+    if (DataLoader.data.slipperyRisk && (this.visibility.slipperyStart || this.visibility.slipperyBar)) {
       const self = this;
 
       DataLoader.data.slipperyRisk.forEach((risk) => {
@@ -487,10 +659,13 @@ const TimelineController = {
         const y = zoneIndex * zoneHeight;
 
         // Draw season start marker
-        if (risk.season_start) {
+        if (this.visibility.slipperyStart && risk.season_start) {
           const seasonStart = new Date(risk.season_start);
+          // Skip invalid dates
+          if (isNaN(seasonStart.getTime())) return;
           if (seasonStart >= startDomain && seasonStart <= endDomain) {
             const xPos = xScale(seasonStart);
+            if (!isFinite(xPos)) return;
 
             const line = this.focusSvg
               .append("line")
@@ -529,16 +704,23 @@ const TimelineController = {
         }
 
         // Draw slippery periods
-        if (risk.slippery_periods) {
+        if (this.visibility.slipperyBar && risk.slippery_periods) {
           risk.slippery_periods.forEach((period) => {
             const periodStart = new Date(period.start);
             const periodEnd = new Date(period.end);
 
+            // Skip invalid dates
+            if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) return;
+
             // Skip if outside visible range
             if (periodEnd < startDomain || periodStart > endDomain) return;
 
-            const x = Math.max(0, xScale(periodStart));
-            const endX = Math.min(width, xScale(periodEnd));
+            const rawX = xScale(periodStart);
+            const rawEndX = xScale(periodEnd);
+            if (!isFinite(rawX) || !isFinite(rawEndX)) return;
+
+            const x = Math.max(0, rawX);
+            const endX = Math.min(width, rawEndX);
             const barWidth = Math.max(2, endX - x);
 
             const isHighRisk = period.high_risk_days > 0;
@@ -584,7 +766,7 @@ const TimelineController = {
     }
 
     // Draw first frost data (focus view with tooltips)
-    if (DataLoader.data.firstFrost) {
+    if (DataLoader.data.firstFrost && (this.visibility.frostMarker || this.visibility.frostBar)) {
       const self = this;
 
       DataLoader.data.firstFrost.forEach((frost) => {
@@ -594,10 +776,13 @@ const TimelineController = {
         const y = zoneIndex * zoneHeight;
 
         // Draw first frost marker line
-        if (frost.first_frost_date) {
+        if (this.visibility.frostMarker && frost.first_frost_date) {
           const frostDate = new Date(frost.first_frost_date);
+          // Skip invalid dates
+          if (isNaN(frostDate.getTime())) return;
           if (frostDate >= startDomain && frostDate <= endDomain) {
             const x = xScale(frostDate);
+            if (!isFinite(x)) return;
 
             const line = this.focusSvg
               .append("line")
@@ -637,16 +822,23 @@ const TimelineController = {
         }
 
         // Draw frost periods
-        if (frost.frost_periods) {
+        if (this.visibility.frostBar && frost.frost_periods) {
           frost.frost_periods.forEach((period) => {
             const periodStart = new Date(period.start);
             const periodEnd = new Date(period.end);
 
+            // Skip invalid dates
+            if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) return;
+
             // Skip if outside visible range
             if (periodEnd < startDomain || periodStart > endDomain) return;
 
-            const x = Math.max(0, xScale(periodStart));
-            const endX = Math.min(width, xScale(periodEnd));
+            const rawX = xScale(periodStart);
+            const rawEndX = xScale(periodEnd);
+            if (!isFinite(rawX) || !isFinite(rawEndX)) return;
+
+            const x = Math.max(0, rawX);
+            const endX = Math.min(width, rawEndX);
             const barWidth = Math.max(2, endX - x);
 
             this.focusSvg
@@ -679,7 +871,7 @@ const TimelineController = {
     }
 
     // Draw winter periods with detailed cold/warm spells
-    if (DataLoader.data.winterStarts) {
+    if (DataLoader.data.winterStarts && (this.visibility.coldSpell || this.visibility.warmSpell || this.visibility.winterStart || this.visibility.winterEnd)) {
       const self = this;
 
       DataLoader.data.winterStarts.forEach((winter) => {
@@ -689,17 +881,24 @@ const TimelineController = {
         const y = zoneIndex * zoneHeight;
 
         // If we have detailed cold_spells data, draw individual spells
-        if (winter.cold_spells && winter.cold_spells.length > 0) {
+        if (this.visibility.coldSpell && winter.cold_spells && winter.cold_spells.length > 0) {
           // Draw cold spells (frost periods)
           winter.cold_spells.forEach((spell) => {
             const spellStart = new Date(spell.start);
             const spellEnd = new Date(spell.end);
 
+            // Skip invalid dates
+            if (isNaN(spellStart.getTime()) || isNaN(spellEnd.getTime())) return;
+
             // Skip if outside visible range
             if (spellEnd < startDomain || spellStart > endDomain) return;
 
-            const x = Math.max(0, xScale(spellStart));
-            const endX = Math.min(width, xScale(spellEnd));
+            const rawX = xScale(spellStart);
+            const rawEndX = xScale(spellEnd);
+            if (!isFinite(rawX) || !isFinite(rawEndX)) return;
+
+            const x = Math.max(0, rawX);
+            const endX = Math.min(width, rawEndX);
             const barWidth = Math.max(2, endX - x);
 
             this.focusSvg
@@ -730,15 +929,22 @@ const TimelineController = {
           });
 
           // Draw warm spells (interruptions) - optional, shown as gaps or different color
-          if (winter.warm_spells) {
+          if (this.visibility.warmSpell && winter.warm_spells) {
             winter.warm_spells.forEach((spell) => {
               const spellStart = new Date(spell.start);
               const spellEnd = new Date(spell.end);
 
+              // Skip invalid dates
+              if (isNaN(spellStart.getTime()) || isNaN(spellEnd.getTime())) return;
+
               if (spellEnd < startDomain || spellStart > endDomain) return;
 
-              const x = Math.max(0, xScale(spellStart));
-              const endX = Math.min(width, xScale(spellEnd));
+              const rawX = xScale(spellStart);
+              const rawEndX = xScale(spellEnd);
+              if (!isFinite(rawX) || !isFinite(rawEndX)) return;
+
+              const x = Math.max(0, rawX);
+              const endX = Math.min(width, rawEndX);
               const barWidth = Math.max(2, endX - x);
 
               this.focusSvg
@@ -773,8 +979,12 @@ const TimelineController = {
           const seasonStart = new Date(winter.season_start);
           const seasonEnd = new Date(winter.season_end);
 
-          if (seasonStart >= startDomain && seasonStart <= endDomain) {
+          // Skip if invalid dates
+          if (isNaN(seasonStart.getTime())) return;
+
+          if (this.visibility.winterStart && seasonStart >= startDomain && seasonStart <= endDomain) {
             const xPos = xScale(seasonStart);
+            if (!isFinite(xPos)) return;
 
             const startLine = this.focusSvg
               .append("line")
@@ -810,11 +1020,14 @@ const TimelineController = {
           }
 
           if (
+            this.visibility.winterEnd &&
             winter.season_end &&
+            !isNaN(seasonEnd.getTime()) &&
             seasonEnd >= startDomain &&
             seasonEnd <= endDomain
           ) {
             const xPos = xScale(seasonEnd);
+            if (!isFinite(xPos)) return;
 
             const endLine = this.focusSvg
               .append("line")
@@ -858,10 +1071,17 @@ const TimelineController = {
               ? new Date(winter.season_end || winter.winter_end)
               : new Date(this.dates[this.dates.length - 1]);
 
+          // Skip invalid dates
+          if (isNaN(winterStart.getTime()) || isNaN(winterEnd.getTime())) return;
+
           if (winterEnd < startDomain || winterStart > endDomain) return;
 
-          const x = Math.max(0, xScale(winterStart));
-          const endX = Math.min(width, xScale(winterEnd));
+          const rawX = xScale(winterStart);
+          const rawEndX = xScale(winterEnd);
+          if (!isFinite(rawX) || !isFinite(rawEndX)) return;
+
+          const x = Math.max(0, rawX);
+          const endX = Math.min(width, rawEndX);
           const barWidth = endX - x;
 
           this.focusSvg
@@ -872,8 +1092,9 @@ const TimelineController = {
             .attr("width", barWidth)
             .attr("height", zoneHeight);
 
-          if (winterStart >= startDomain && winterStart <= endDomain) {
+          if (this.visibility.winterStart && winterStart >= startDomain && winterStart <= endDomain) {
             const xPos = xScale(winterStart);
+            if (!isFinite(xPos)) return;
 
             const startLine = this.focusSvg
               .append("line")
@@ -909,11 +1130,13 @@ const TimelineController = {
           }
 
           if (
+            this.visibility.winterEnd &&
             (winter.season_end || winter.winter_end) &&
             winterEnd >= startDomain &&
             winterEnd <= endDomain
           ) {
             const xPos = xScale(winterEnd);
+            if (!isFinite(xPos)) return;
 
             const endLine = this.focusSvg
               .append("line")
@@ -954,6 +1177,16 @@ const TimelineController = {
     // Draw anomaly bars with tooltips
     const self = this;
     DataLoader.data.anomalies.forEach((anomaly) => {
+      // Check visibility for this anomaly type
+      let isVisible = false;
+      if (anomaly.type === "Äärimmäinen kylmyys") isVisible = this.visibility.extremeCold;
+      else if (anomaly.type === "Ankara pakkasjakso") isVisible = this.visibility.coldSnap;
+      else if (anomaly.type === "Hellejakso") isVisible = this.visibility.heatWave;
+      else if (anomaly.type === "Takatalvi") isVisible = this.visibility.returnWinter;
+      else if (anomaly.type === "Äkillinen lämpeneminen") isVisible = this.visibility.tempJump;
+
+      if (!isVisible) return;
+
       const startDate = anomaly.start_date || anomaly.date;
       if (!startDate) return;
 
@@ -961,14 +1194,23 @@ const TimelineController = {
       if (zoneIndex === -1) return;
 
       const start = new Date(startDate);
+      // Skip if invalid date
+      if (isNaN(start.getTime())) return;
+
       const duration = anomaly.duration_days || 1;
       const end = new Date(start.getTime() + duration * 24 * 60 * 60 * 1000);
 
       // Skip if outside visible range
       if (end < startDomain || start > endDomain) return;
 
-      const x = Math.max(0, xScale(start));
-      const endX = Math.min(width, xScale(end));
+      const rawX = xScale(start);
+      const rawEndX = xScale(end);
+
+      // Skip if scale returns invalid values
+      if (!isFinite(rawX) || !isFinite(rawEndX)) return;
+
+      const x = Math.max(0, rawX);
+      const endX = Math.min(width, rawEndX);
       const barWidth = Math.max(3, endX - x);
       const y = zoneIndex * zoneHeight + 3;
 
@@ -1061,7 +1303,34 @@ const TimelineController = {
     this.focusSvg.selectAll("*").remove();
     this.drawFocusChart(width, focusHeight);
 
-    // Re-add click handler
+    // Re-add interaction handlers (click + drag to scrub)
+    const self = this;
+
+    this.focusSvg.on("mousedown", function(event) {
+      self.isDragging = true;
+      self.stop();
+
+      const [x] = d3.pointer(event);
+      const clickedDate = self.xScaleFocus.invert(x);
+      self.jumpToClosestDate(clickedDate);
+    });
+
+    this.focusSvg.on("mousemove", function(event) {
+      if (self.isDragging) {
+        const [x] = d3.pointer(event);
+        const clickedDate = self.xScaleFocus.invert(x);
+        self.jumpToClosestDate(clickedDate);
+      }
+    });
+
+    this.focusSvg.on("mouseup", function(event) {
+      self.isDragging = false;
+    });
+
+    this.focusSvg.on("mouseleave", function(event) {
+      self.isDragging = false;
+    });
+
     this.focusSvg.on("click", (event) => {
       const [x] = d3.pointer(event);
       const clickedDate = this.xScaleFocus.invert(x);
@@ -1422,13 +1691,13 @@ const TimelineController = {
         period.avg_min_temp !== null ? period.avg_min_temp.toFixed(1) : "-";
 
       html = `<div style="color: #00bcd4;">
-        <strong>🥶 Pakkasjakso</strong><br>
+        <strong>🥶 Nollaraja alittuu</strong><br>
         <span style="font-size: 11px;">${frost.zone} • Syksy ${frost.year}</span>
       </div>
       <div style="margin-top: 8px;">
         <strong>${period.start}</strong> → <strong>${period.end}</strong><br>
         Kesto: ${period.duration} päivää<br>
-        Kylmin yö: ${minTemp}°C<br>
+        Kylmin yölämpötila: ${minTemp}°C<br>
         Keskiarvo: ${avgMinTemp}°C
       </div>`;
     } else {
@@ -1545,6 +1814,55 @@ const TimelineController = {
     } else {
       console.warn("Speed control not found");
     }
+  },
+
+  /**
+   * Attach click handlers to legend items for toggling visibility
+   */
+  attachLegendToggles() {
+    const legendContainer = document.querySelector("#anomaly-timeline .anomaly-legend-inline");
+    if (!legendContainer) return;
+
+    const legendItems = legendContainer.querySelectorAll(".legend-item");
+
+    legendItems.forEach((item) => {
+      // Make legend items clickable
+      item.style.cursor = "pointer";
+      item.style.userSelect = "none";
+
+      // Determine which visibility key this legend item controls
+      let visKey = null;
+      if (item.querySelector(".cold-spell-icon")) visKey = "coldSpell";
+      else if (item.querySelector(".warm-spell-icon")) visKey = "warmSpell";
+      else if (item.querySelector(".winter-start-icon")) visKey = "winterStart";
+      else if (item.querySelector(".winter-end-icon")) visKey = "winterEnd";
+      else if (item.querySelector(".slippery-start-icon")) visKey = "slipperyStart";
+      else if (item.querySelector(".slippery-bar-icon")) visKey = "slipperyBar";
+      else if (item.querySelector(".frost-marker-icon")) visKey = "frostMarker";
+      else if (item.querySelector(".frost-bar-icon")) visKey = "frostBar";
+      else if (item.querySelector(".anomaly-icon.extreme-cold")) visKey = "extremeCold";
+      else if (item.querySelector(".anomaly-icon.cold-snap")) visKey = "coldSnap";
+      else if (item.querySelector(".anomaly-icon.heat-wave")) visKey = "heatWave";
+      else if (item.querySelector(".anomaly-icon.return-winter")) visKey = "returnWinter";
+      else if (item.querySelector(".anomaly-icon.temp-jump")) visKey = "tempJump";
+
+      if (visKey) {
+        item.addEventListener("click", () => {
+          // Toggle visibility
+          this.visibility[visKey] = !this.visibility[visKey];
+
+          // Update visual state
+          if (this.visibility[visKey]) {
+            item.classList.remove("legend-disabled");
+          } else {
+            item.classList.add("legend-disabled");
+          }
+
+          // Re-render timeline
+          this.drawAnomalyTimeline();
+        });
+      }
+    });
   },
 
   /**

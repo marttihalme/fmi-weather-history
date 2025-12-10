@@ -12,7 +12,6 @@ Output: ../data/daily_zone_summary.json (~400 KB gzipped)
 
 import pandas as pd
 import json
-import gzip
 import subprocess
 import sys
 from pathlib import Path
@@ -74,11 +73,7 @@ with open(output_file, 'w') as f:
     json.dump(station_summary, f)
 print(f"   Saved: {output_file} ({output_file.stat().st_size / 1024:.0f} KB)")
 
-# Save gzipped
-output_file_gz = DATA_DIR / "daily_station_data.json.gz"
-with gzip.open(output_file_gz, 'wt') as f:
-    json.dump(station_summary, f)
-print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
+# GZ files removed - server handles gzip compression automatically
 
 # Also keep zone summaries for statistics display
 print("\n2b. Creating zone summaries for statistics...")
@@ -124,11 +119,6 @@ with open(output_file, 'w') as f:
 print(f"   Found {len(stations)} unique stations")
 print(f"   Saved: {output_file} ({output_file.stat().st_size / 1024:.0f} KB)")
 
-# Save gzipped
-output_file_gz = DATA_DIR / "station_locations.json.gz"
-with gzip.open(output_file_gz, 'wt') as f:
-    json.dump(station_data, f)
-print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
 
 # 4. Process anomalies (optional source)
 print("\n4. Processing weather anomalies...")
@@ -165,11 +155,6 @@ with open(output_file, 'w') as f:
     json.dump(anomaly_data, f)
 print(f"   Saved: {output_file} ({output_file.stat().st_size / 1024:.0f} KB)")
 
-# Save gzipped
-output_file_gz = DATA_DIR / "anomalies.json.gz"
-with gzip.open(output_file_gz, 'wt') as f:
-    json.dump(anomaly_data, f)
-print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
 
 # 5. Process winter progression (detailed with cold/warm spells)
 print("\n5. Processing winter progression data...")
@@ -201,11 +186,6 @@ with open(output_file, 'w') as f:
     json.dump(winter_data, f)
 print(f"   Saved: {output_file} ({output_file.stat().st_size / 1024:.0f} KB)")
 
-# Save gzipped
-output_file_gz = DATA_DIR / "winter_starts.json.gz"
-with gzip.open(output_file_gz, 'wt') as f:
-    json.dump(winter_data, f)
-print(f"   Saved: {output_file_gz} ({output_file_gz.stat().st_size / 1024:.0f} KB)")
 
 # 6. Summary statistics
 print("\n" + "=" * 50)
@@ -232,10 +212,7 @@ print("RUNNING ANALYSIS SCRIPTS")
 print("=" * 50)
 
 analysis_scripts = [
-    'analyze_first_frost.py',
-    'analyze_winter_start.py',
-    'analyze_slippery_risk.py',
-    'analyze_weather_anomalies.py'
+    'analyze_data.py'
 ]
 
 SCRIPTS_DIR = BASE_DIR / "scripts"

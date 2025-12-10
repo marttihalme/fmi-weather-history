@@ -35,6 +35,23 @@ const YearCompare = {
     "Äkillinen lämpeneminen": "#fdae6b",
   },
 
+  // Visibility toggles for different element types
+  visibility: {
+    coldSpell: true,
+    warmSpell: true,
+    winterStart: true,
+    winterEnd: true,
+    slipperyStart: true,
+    slipperyBar: true,
+    frostMarker: true,
+    frostBar: true,
+    extremeCold: true,
+    coldSnap: true,
+    heatWave: true,
+    returnWinter: true,
+    tempJump: true,
+  },
+
   /**
    * Initialize the year comparison view
    */
@@ -54,6 +71,58 @@ const YearCompare = {
         this.render();
       });
     }
+
+    // Attach legend toggle handlers
+    this.attachLegendToggles();
+  },
+
+  /**
+   * Attach click handlers to legend items for toggling visibility
+   */
+  attachLegendToggles() {
+    const legendContainer = document.querySelector("#compare-controls .compare-legend-inline");
+    if (!legendContainer) return;
+
+    const legendItems = legendContainer.querySelectorAll(".legend-item");
+
+    legendItems.forEach((item) => {
+      // Make legend items clickable
+      item.style.cursor = "pointer";
+      item.style.userSelect = "none";
+
+      // Determine which visibility key this legend item controls
+      let visKey = null;
+      if (item.querySelector(".cold-spell-icon")) visKey = "coldSpell";
+      else if (item.querySelector(".warm-spell-icon")) visKey = "warmSpell";
+      else if (item.querySelector(".winter-start-icon")) visKey = "winterStart";
+      else if (item.querySelector(".winter-end-icon")) visKey = "winterEnd";
+      else if (item.querySelector(".slippery-start-icon")) visKey = "slipperyStart";
+      else if (item.querySelector(".slippery-bar-icon")) visKey = "slipperyBar";
+      else if (item.querySelector(".frost-marker-icon")) visKey = "frostMarker";
+      else if (item.querySelector(".frost-bar-icon")) visKey = "frostBar";
+      else if (item.querySelector(".anomaly-icon.extreme-cold")) visKey = "extremeCold";
+      else if (item.querySelector(".anomaly-icon.cold-snap")) visKey = "coldSnap";
+      else if (item.querySelector(".anomaly-icon.heat-wave")) visKey = "heatWave";
+      else if (item.querySelector(".anomaly-icon.return-winter")) visKey = "returnWinter";
+      else if (item.querySelector(".anomaly-icon.temp-jump")) visKey = "tempJump";
+
+      if (visKey) {
+        item.addEventListener("click", () => {
+          // Toggle visibility
+          this.visibility[visKey] = !this.visibility[visKey];
+
+          // Update visual state
+          if (this.visibility[visKey]) {
+            item.classList.remove("legend-disabled");
+          } else {
+            item.classList.add("legend-disabled");
+          }
+
+          // Re-render timeline
+          this.render();
+        });
+      }
+    });
   },
 
   /**
@@ -335,7 +404,7 @@ const YearCompare = {
     // Draw cold spells and warm spells from winter data
     relevantWinters.forEach((winter) => {
       // Draw cold spells
-      if (winter.cold_spells) {
+      if (this.visibility.coldSpell && winter.cold_spells) {
         winter.cold_spells.forEach((spell) => {
           const spellStart = new Date(spell.start);
           const spellEnd = new Date(spell.end);
@@ -376,7 +445,7 @@ const YearCompare = {
       }
 
       // Draw warm spells (interruptions)
-      if (winter.warm_spells) {
+      if (this.visibility.warmSpell && winter.warm_spells) {
         winter.warm_spells.forEach((spell) => {
           const spellStart = new Date(spell.start);
           const spellEnd = new Date(spell.end);
@@ -414,7 +483,7 @@ const YearCompare = {
       }
 
       // Draw winter start marker
-      if (winter.season_start) {
+      if (this.visibility.winterStart && winter.season_start) {
         const startDate = new Date(winter.season_start);
         if (startDate >= yearStart && startDate <= yearEnd) {
           const x = this.dateToX(startDate, yearStart, yearMs, width);
@@ -456,7 +525,7 @@ const YearCompare = {
       }
 
       // Draw winter end marker
-      if (winter.season_end) {
+      if (this.visibility.winterEnd && winter.season_end) {
         const endDate = new Date(winter.season_end);
         if (endDate >= yearStart && endDate <= yearEnd) {
           const x = this.dateToX(endDate, yearStart, yearMs, width);
@@ -506,7 +575,7 @@ const YearCompare = {
 
     relevantSlippery.forEach((risk) => {
       // Draw season start marker
-      if (risk.season_start) {
+      if (this.visibility.slipperyStart && risk.season_start) {
         const seasonStart = new Date(risk.season_start);
         if (seasonStart >= yearStart && seasonStart <= yearEnd) {
           const x = this.dateToX(seasonStart, yearStart, yearMs, width);
@@ -551,7 +620,7 @@ const YearCompare = {
       }
 
       // Draw slippery periods
-      if (risk.slippery_periods) {
+      if (this.visibility.slipperyBar && risk.slippery_periods) {
         risk.slippery_periods.forEach((period) => {
           const periodStart = new Date(period.start);
           const periodEnd = new Date(period.end);
@@ -606,7 +675,7 @@ const YearCompare = {
 
     relevantFrost.forEach((frost) => {
       // Draw first frost marker line
-      if (frost.first_frost_date) {
+      if (this.visibility.frostMarker && frost.first_frost_date) {
         const frostDate = new Date(frost.first_frost_date);
         if (frostDate >= yearStart && frostDate <= yearEnd) {
           const x = this.dateToX(frostDate, yearStart, yearMs, width);
@@ -651,7 +720,7 @@ const YearCompare = {
       }
 
       // Draw frost periods
-      if (frost.frost_periods) {
+      if (this.visibility.frostBar && frost.frost_periods) {
         frost.frost_periods.forEach((period) => {
           const periodStart = new Date(period.start);
           const periodEnd = new Date(period.end);
@@ -705,6 +774,16 @@ const YearCompare = {
     });
 
     yearAnomalies.forEach((anomaly) => {
+      // Check visibility for this anomaly type
+      let isVisible = false;
+      if (anomaly.type === "Äärimmäinen kylmyys") isVisible = this.visibility.extremeCold;
+      else if (anomaly.type === "Ankara pakkasjakso") isVisible = this.visibility.coldSnap;
+      else if (anomaly.type === "Hellejakso") isVisible = this.visibility.heatWave;
+      else if (anomaly.type === "Takatalvi") isVisible = this.visibility.returnWinter;
+      else if (anomaly.type === "Äkillinen lämpeneminen") isVisible = this.visibility.tempJump;
+
+      if (!isVisible) return;
+
       const startDate = new Date(anomaly.start_date || anomaly.date);
       const duration = anomaly.duration_days || 1;
       const endDate = new Date(
@@ -1055,13 +1134,13 @@ const YearCompare = {
           : "-";
 
       html = `<div style="color: #00bcd4;">
-        <strong>🥶 Pakkasjakso</strong>
+        <strong>🥶 Nollaraja alittuu</strong>
       </div>
       <div style="margin-top: 4px;">
         ${frost.zone} • Syksy ${frost.year}<br>
         ${period.start} → ${period.end}<br>
         Kesto: ${period.duration} pv<br>
-        Kylmin yö: ${minTemp}°C<br>
+        Kylmin yölämpötila: ${minTemp}°C<br>
         Keskiarvo: ${avgMinTemp}°C
       </div>`;
     } else {

@@ -54,6 +54,10 @@
               Show Winter Progression
             </label>
             <label>
+              <input type="checkbox" id="toggle-stations" />
+              Show Stations
+            </label>
+            <label>
               <input type="checkbox" id="toggle-table" />
               Show Data Table
             </label>
@@ -179,6 +183,12 @@
                   ><span class="slippery-bar-icon"></span> Liukkausriski</span
                 >
                 <span class="legend-item"
+                  ><span class="frost-marker-icon"></span> Ensimmäinen yöpakkanen</span
+                >
+                <span class="legend-item"
+                  ><span class="frost-bar-icon"></span> Nollaraja alittuu</span
+                >
+                <span class="legend-item"
                   ><span class="anomaly-icon extreme-cold"></span> Äärimmäinen
                   kylmyys</span
                 >
@@ -277,6 +287,16 @@
                 class="legend-item"
                 title="Jakso, jolloin yöpakkanen ja päivällä sulamislämpötila luovat liukkautta (yö <0°C, päivä 0-5°C)"
                 ><span class="slippery-bar-icon"></span> Liukkausriski</span
+              >
+              <span
+                class="legend-item"
+                title="Ensimmäinen yöpakkanen syksyllä"
+                ><span class="frost-marker-icon"></span> Ensimmäinen yöpakkanen</span
+              >
+              <span
+                class="legend-item"
+                title="Yölämpötila laskee alle 0°C"
+                ><span class="frost-bar-icon"></span> Nollaraja alittuu</span
               >
               <span
                 class="legend-item"
