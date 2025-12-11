@@ -116,18 +116,18 @@ const WinterProgressionLayer = {
   createLegend() {
     return `
       <div class="winter-legend">
-        <h4>Winter Progression</h4>
+        <h4>Talven eteneminen</h4>
         <div class="legend-item">
-          <span class="legend-color" style="background: #E8F4F8;"></span> Light snow
+          <span class="legend-color" style="background: #E8F4F8;"></span> Ohut lumipeite
         </div>
         <div class="legend-item">
-          <span class="legend-color" style="background: #B0D4E3;"></span> Moderate snow
+          <span class="legend-color" style="background: #B0D4E3;"></span> Kohtalainen lumipeite
         </div>
         <div class="legend-item">
-          <span class="legend-color" style="background: #5B8DBE;"></span> Heavy snow
+          <span class="legend-color" style="background: #5B8DBE;"></span> Paksu lumipeite
         </div>
         <div class="legend-item">
-          <span class="legend-color" style="background: #0D47A1;"></span> Ice/Permafrost
+          <span class="legend-color" style="background: #0D47A1;"></span> Jää/ikirouta
         </div>
       </div>
     `;

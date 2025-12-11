@@ -199,3 +199,24 @@
 .leaflet-tooltip-right:before {
   border-top-color: rgba(255, 255, 255, 0.95);
 }
+
+/* Weather station markers */
+.weather-station-marker {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.weather-station-marker:hover {
+  filter: brightness(1.2);
+}
+
+/* Station tooltip styling */
+#station-tooltip {
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+#station-tooltip strong {
+  display: block;
+  margin-bottom: 4px;
+}

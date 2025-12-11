@@ -7,7 +7,7 @@ const ColorScales = {
     // Metric configurations
     metrics: {
         temp_mean: {
-            name: 'Air Temperature (Mean)',
+            name: 'Keskimääräinen lämpötila',
             unit: '°C',
             range: [-40, 35],
             colors: [
@@ -21,7 +21,7 @@ const ColorScales = {
             type: 'diverging'
         },
         temp_min: {
-            name: 'Minimum Temperature',
+            name: 'Minimi lämpötila',
             unit: '°C',
             range: [-50, 25],
             colors: [
@@ -35,7 +35,7 @@ const ColorScales = {
             type: 'sequential'
         },
         temp_max: {
-            name: 'Maximum Temperature',
+            name: 'Maksimi lämpötila',
             unit: '°C',
             range: [-30, 40],
             colors: [
@@ -50,7 +50,7 @@ const ColorScales = {
             type: 'sequential'
         },
         snow_depth: {
-            name: 'Snow Depth',
+            name: 'Lumensyvyys',
             unit: 'cm',
             range: [0, 100],
             colors: [
@@ -65,7 +65,7 @@ const ColorScales = {
             type: 'sequential'
         },
         precipitation: {
-            name: 'Precipitation Amount',
+            name: 'Sademäärä',
             unit: 'mm',
             range: [0, 40],
             colors: [

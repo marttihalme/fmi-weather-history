@@ -1,0 +1,3 @@
+Pakkasjakso (syksy) -> "Nollaraja alittuu"
+
+Visualisointi: ei haluta esittää datassa silloin kun meillä on Pakkasjakso niin ei ole samanaikaisesti. 

@@ -348,6 +348,61 @@ const MapManager = {
   },
 
   /**
+   * Add weather station markers with detailed tooltips
+   * @param {Array} stationData - Array of station data objects with lat, lon, and measurements
+   * @param {string} currentMetric - Currently selected metric
+   */
+  addWeatherStationMarkers(stationData, currentMetric) {
+    if (!this.layers.markers || !this.projection) return;
+
+    // Clear existing markers
+    this.layers.markers.selectAll('.weather-station-marker').remove();
+
+    const self = this;
+
+    stationData.forEach(station => {
+      if (!station.lat || !station.lon) return;
+
+      const [x, y] = this.latLonToPixel(station.lat, station.lon);
+
+      // Create marker circle - small and gray
+      const marker = this.layers.markers.append('circle')
+        .attr('class', 'weather-station-marker')
+        .attr('cx', x)
+        .attr('cy', y)
+        .attr('r', 3)
+        .attr('fill', '#666666')
+        .attr('fill-opacity', 0.6)
+        .attr('stroke', '#444444')
+        .attr('stroke-width', 1)
+        .style('cursor', 'pointer')
+        .style('pointer-events', 'all')
+        .datum(station);
+
+      // Add hover effects
+      marker
+        .on('mouseover', function(event) {
+          d3.select(this)
+            .attr('r', 6)
+            .attr('fill', '#888888')
+            .attr('fill-opacity', 0.9)
+            .attr('stroke-width', 1.5);
+
+          self.showStationTooltip(event, d3.select(this).datum(), currentMetric);
+        })
+        .on('mouseout', function() {
+          d3.select(this)
+            .attr('r', 3)
+            .attr('fill', '#666666')
+            .attr('fill-opacity', 0.6)
+            .attr('stroke-width', 1);
+
+          self.hideStationTooltip();
+        });
+    });
+  },
+
+  /**
    * Show tooltip
    */
   showTooltip(event, data) {
@@ -379,6 +434,103 @@ const MapManager = {
    */
   hideTooltip() {
     d3.select('#map-tooltip').style('display', 'none');
+  },
+
+  /**
+   * Show detailed station tooltip with all metrics
+   * @param {Event} event - Mouse event
+   * @param {Object} station - Station data
+   * @param {string} currentMetric - Currently selected metric
+   */
+  showStationTooltip(event, station, currentMetric) {
+    let tooltip = d3.select('#station-tooltip');
+    if (tooltip.empty()) {
+      tooltip = d3.select('body').append('div')
+        .attr('id', 'station-tooltip')
+        .attr('class', 'station-tooltip')
+        .style('position', 'fixed')
+        .style('background', 'rgba(0, 0, 0, 0.9)')
+        .style('color', 'white')
+        .style('padding', '12px 16px')
+        .style('border-radius', '6px')
+        .style('font-size', '13px')
+        .style('pointer-events', 'none')
+        .style('z-index', '10000')
+        .style('box-shadow', '0 4px 12px rgba(0,0,0,0.3)')
+        .style('max-width', '320px')
+        .style('line-height', '1.5');
+    }
+
+    // Build tooltip content
+    const stationName = station.station_name || station.name || 'Unknown Station';
+    const stationId = station.station_id || station.id || '';
+
+    let html = `<div style="border-bottom: 1px solid #555; padding-bottom: 8px; margin-bottom: 8px;">
+      <strong style="font-size: 14px;">${stationName}</strong>`;
+
+    if (stationId) {
+      html += `<br><span style="color: #aaa; font-size: 11px;">Asema ID: ${stationId}</span>`;
+    }
+
+    html += `</div><div style="display: grid; grid-template-columns: auto auto; gap: 8px 16px;">`;
+
+    // Add all available metrics
+    const metrics = [
+      { key: 'temp_mean', label: 'Keskilämpötila', unit: '°C', highlight: currentMetric === 'temp_mean' },
+      { key: 'temp_min', label: 'Minimilämpötila', unit: '°C', highlight: currentMetric === 'temp_min' },
+      { key: 'temp_max', label: 'Maksimilämpötila', unit: '°C', highlight: currentMetric === 'temp_max' },
+      { key: 'snow_depth', label: 'Lumensyvyys', unit: 'cm', highlight: currentMetric === 'snow_depth' },
+      { key: 'precipitation', label: 'Sademäärä', unit: 'mm', highlight: currentMetric === 'precipitation' }
+    ];
+
+    metrics.forEach(metric => {
+      const value = station[metric.key];
+      if (value !== null && value !== undefined) {
+        const style = metric.highlight ? 'color: #ffd43b; font-weight: bold;' : 'color: #ddd;';
+        html += `<div style="${style}">${metric.label}:</div>`;
+        html += `<div style="${style} text-align: right;">${value.toFixed(1)} ${metric.unit}</div>`;
+      }
+    });
+
+    html += '</div>';
+
+    // Add zone info if available
+    if (station.zone) {
+      html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #555; color: #aaa; font-size: 11px;">
+        Alue: ${station.zone}
+      </div>`;
+    }
+
+    tooltip.html(html);
+
+    // Position tooltip near cursor but ensure it stays on screen
+    const tooltipNode = tooltip.node();
+    const tooltipRect = tooltipNode.getBoundingClientRect();
+
+    let left = event.clientX + 15;
+    let top = event.clientY + 15;
+
+    // Adjust if tooltip would go off right edge
+    if (left + tooltipRect.width > window.innerWidth) {
+      left = event.clientX - tooltipRect.width - 15;
+    }
+
+    // Adjust if tooltip would go off bottom edge
+    if (top + tooltipRect.height > window.innerHeight) {
+      top = event.clientY - tooltipRect.height - 15;
+    }
+
+    tooltip
+      .style('left', left + 'px')
+      .style('top', top + 'px')
+      .style('display', 'block');
+  },
+
+  /**
+   * Hide station tooltip
+   */
+  hideStationTooltip() {
+    d3.select('#station-tooltip').style('display', 'none');
   },
 
   /**

@@ -20,7 +20,12 @@
       "Bash(dir /b \"c:\\dev\\fmi-weather-history\\data\\analysis\")",
       "Bash(set:*)",
       "Bash(echo:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(grep:*)",
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

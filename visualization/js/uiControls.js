@@ -8,6 +8,7 @@ const UIControls = {
     onMetricChange: null,
     onAnomalyTimelineToggle: null,
     onWinterToggle: null,
+    onStationsToggle: null,
     onDataTableToggle: null,
     onRefresh30Click: null,
   },
@@ -93,6 +94,18 @@ const UIControls = {
       });
     } else {
       console.warn("Winter checkbox not found");
+    }
+
+    const stationsCheckbox = document.getElementById("toggle-stations");
+    if (stationsCheckbox) {
+      stationsCheckbox.addEventListener("change", (e) => {
+        console.log("Stations toggled:", e.target.checked);
+        if (this.callbacks.onStationsToggle) {
+          this.callbacks.onStationsToggle(e.target.checked);
+        }
+      });
+    } else {
+      console.warn("Stations checkbox not found");
     }
 
     const dataTableCheckbox = document.getElementById("toggle-table");
@@ -282,6 +295,14 @@ const UIControls = {
    */
   onWinterToggle(callback) {
     this.callbacks.onWinterToggle = callback;
+  },
+
+  /**
+   * Register callback for stations toggle
+   * @param {Function} callback
+   */
+  onStationsToggle(callback) {
+    this.callbacks.onStationsToggle = callback;
   },
 
   /**

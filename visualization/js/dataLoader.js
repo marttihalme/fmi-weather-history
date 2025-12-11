@@ -359,6 +359,265 @@ const DataLoader = {
   },
 
   /**
+   * Get cold spells active on a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of cold spell objects with zone info
+   */
+  getColdSpellsForDate(date) {
+    if (!this.data.winterStarts) return [];
+
+    const results = [];
+    this.data.winterStarts.forEach((record) => {
+      if (!record.cold_spells) return;
+
+      record.cold_spells.forEach((spell) => {
+        if (date >= spell.start && date <= spell.end) {
+          results.push({
+            type: "cold_spell",
+            zone: record.zone,
+            start_date: spell.start,
+            end_date: spell.end,
+            duration_days: spell.duration,
+            min_temp: spell.min_temp,
+            season: record.season,
+          });
+        }
+      });
+    });
+
+    return results;
+  },
+
+  /**
+   * Get warm spells active on a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of warm spell objects with zone info
+   */
+  getWarmSpellsForDate(date) {
+    if (!this.data.winterStarts) return [];
+
+    const results = [];
+    this.data.winterStarts.forEach((record) => {
+      if (!record.warm_spells) return;
+
+      record.warm_spells.forEach((spell) => {
+        if (date >= spell.start && date <= spell.end) {
+          results.push({
+            type: "warm_spell",
+            zone: record.zone,
+            start_date: spell.start,
+            end_date: spell.end,
+            duration_days: spell.duration,
+            max_temp: spell.max_temp,
+            season: record.season,
+          });
+        }
+      });
+    });
+
+    return results;
+  },
+
+  /**
+   * Get winter start markers for a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of winter start marker objects
+   */
+  getWinterStartsForDate(date) {
+    if (!this.data.winterStarts) return [];
+
+    return this.data.winterStarts
+      .filter((record) => record.season_start === date)
+      .map((record) => ({
+        type: "winter_start",
+        zone: record.zone,
+        date: record.season_start,
+        season: record.season,
+        total_days: record.total_days,
+      }));
+  },
+
+  /**
+   * Get winter end markers for a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of winter end marker objects
+   */
+  getWinterEndsForDate(date) {
+    if (!this.data.winterStarts) return [];
+
+    return this.data.winterStarts
+      .filter((record) => record.season_end === date)
+      .map((record) => ({
+        type: "winter_end",
+        zone: record.zone,
+        date: record.season_end,
+        season: record.season,
+        total_days: record.total_days,
+      }));
+  },
+
+  /**
+   * Get slippery season start markers for a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of slippery season start marker objects
+   */
+  getSlipperySeasonStartsForDate(date) {
+    if (!this.data.slipperyRisk) return [];
+
+    return this.data.slipperyRisk
+      .filter((record) => record.season_start === date)
+      .map((record) => ({
+        type: "slippery_start",
+        zone: record.zone,
+        date: record.season_start,
+        year: record.year,
+        risk_days_total: record.risk_days_total,
+      }));
+  },
+
+  /**
+   * Get slippery risk periods active on a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of slippery risk period objects
+   */
+  getSlipperyPeriodsForDate(date) {
+    if (!this.data.slipperyRisk) return [];
+
+    const results = [];
+    this.data.slipperyRisk.forEach((record) => {
+      if (!record.slippery_periods) return;
+
+      record.slippery_periods.forEach((period) => {
+        if (date >= period.start && date <= period.end) {
+          results.push({
+            type: "slippery_period",
+            zone: record.zone,
+            start_date: period.start,
+            end_date: period.end,
+            duration_days: period.duration,
+            high_risk_days: period.high_risk_days,
+            avg_min_temp: period.avg_min_temp,
+            avg_max_temp: period.avg_max_temp,
+            year: record.year,
+          });
+        }
+      });
+    });
+
+    return results;
+  },
+
+  /**
+   * Get first frost markers for a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of first frost marker objects
+   */
+  getFirstFrostForDate(date) {
+    if (!this.data.firstFrost) return [];
+
+    return this.data.firstFrost
+      .filter((record) => record.first_frost_date === date)
+      .map((record) => ({
+        type: "first_frost",
+        zone: record.zone,
+        date: record.first_frost_date,
+        frost_temp: record.first_frost_temp,
+        year: record.year,
+      }));
+  },
+
+  /**
+   * Get frost periods active on a specific date
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of frost period objects
+   */
+  getFrostPeriodsForDate(date) {
+    if (!this.data.firstFrost) return [];
+
+    const results = [];
+    this.data.firstFrost.forEach((record) => {
+      if (!record.frost_periods) return;
+
+      record.frost_periods.forEach((period) => {
+        if (date >= period.start && date <= period.end) {
+          results.push({
+            type: "frost_period",
+            zone: record.zone,
+            start_date: period.start,
+            end_date: period.end,
+            duration_days: period.duration,
+            min_temp: period.min_temp,
+            avg_min_temp: period.avg_min_temp,
+            year: record.year,
+          });
+        }
+      });
+    });
+
+    return results;
+  },
+
+  /**
+   * Get all phenomena active on a specific date
+   * Combines all phenomenon types for the Active Anomalies list
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of all phenomenon objects sorted by type
+   */
+  getAllPhenomenaForDate(date) {
+    const allPhenomena = [
+      ...this.getColdSpellsForDate(date),
+      ...this.getWarmSpellsForDate(date),
+      ...this.getWinterStartsForDate(date),
+      ...this.getWinterEndsForDate(date),
+      ...this.getSlipperySeasonStartsForDate(date),
+      ...this.getSlipperyPeriodsForDate(date),
+      ...this.getFirstFrostForDate(date),
+      ...this.getFrostPeriodsForDate(date),
+    ];
+
+    // Also add anomalies, normalized to the same format
+    const anomalies = this.getAnomaliesForDate(date);
+    anomalies.forEach((anomaly) => {
+      allPhenomena.push({
+        type: anomaly.type,
+        zone: anomaly.zone,
+        start_date: anomaly.start_date || anomaly.date,
+        end_date: anomaly.end_date,
+        duration_days: anomaly.duration_days,
+        min_temp: anomaly.min_temperature,
+        max_temp: anomaly.max_temperature,
+      });
+    });
+
+    // Sort order for logical grouping
+    const sortOrder = [
+      "winter_start",
+      "winter_end",
+      "first_frost",
+      "frost_period",
+      "cold_spell",
+      "warm_spell",
+      "Äärimmäinen kylmyys",
+      "Ankara pakkasjakso",
+      "Hellejakso",
+      "Takatalvi",
+      "Äkillinen lämpeneminen",
+      "slippery_start",
+      "slippery_period",
+    ];
+
+    allPhenomena.sort((a, b) => {
+      const indexA = sortOrder.indexOf(a.type);
+      const indexB = sortOrder.indexOf(b.type);
+      if (indexA !== indexB) return indexA - indexB;
+      // Secondary sort by zone
+      return a.zone.localeCompare(b.zone);
+    });
+
+    return allPhenomena;
+  },
+
+  /**
    * Get winter status for a zone on a date
    * @param {string} date - Date string (YYYY-MM-DD)
    * @param {string} zone - Zone key

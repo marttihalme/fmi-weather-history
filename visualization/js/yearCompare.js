@@ -12,18 +12,18 @@ const YearCompare = {
 
   // Month names for labels
   monthNames: [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
+    "Tammi",
+    "Helmi",
+    "Maalis",
+    "Huhti",
+    "Touko",
+    "Kesä",
+    "Heinä",
+    "Elo",
+    "Syys",
+    "Loka",
+    "Marras",
+    "Joulu",
   ],
 
   // Anomaly colors (same as timeline)
@@ -215,7 +215,7 @@ const YearCompare = {
 
     const label = document.createElement("div");
     label.className = "year-label";
-    label.textContent = "Year";
+    label.textContent = "Vuosi";
     header.appendChild(label);
 
     const chartContainer = document.createElement("div");

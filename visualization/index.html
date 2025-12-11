@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Finnish Weather Visualization System</title>
+    <title>Sääkone</title>
 
     <!-- Application CSS -->
     <link rel="stylesheet" href="css/main.css" />
@@ -15,16 +15,20 @@
     <div id="app-container">
       <!-- Header -->
       <header id="app-header">
-        <h1>Finnish Weather Visualization</h1>
+        <h1>Sääkone</h1>
+        <div id="credits">
+          <span>Kehittäjä: Martti Halme, 2025</span>
+          <span>Tiedot: Ilmatieteenlaitos, avoin-data</span>
+        </div>
         <nav id="tabs">
           <button class="tab-button active" data-tab="exploration">
-            Exploration
+            Tutkimus
           </button>
           <button class="tab-button" data-tab="compare-years">
-            Compare Years
+            Vertaile vuosia
           </button>
           <button class="tab-button" data-tab="data-management">
-            Data Management
+            Datan hallinta
           </button>
         </nav>
       </header>
@@ -34,32 +38,28 @@
         <!-- Control Panel -->
         <div id="control-panel">
           <div class="control-group">
-            <label for="metric-selector">Metric:</label>
+            <label for="metric-selector">Mittari:</label>
             <select id="metric-selector">
-              <option value="temp_mean">Air Temperature (Mean)</option>
-              <option value="temp_min">Minimum Temperature</option>
-              <option value="temp_max">Maximum Temperature</option>
-              <option value="snow_depth">Snow Depth</option>
-              <option value="precipitation">Precipitation Amount</option>
+              <option value="temp_mean">Keskilämpötila</option>
+              <option value="temp_min">Minimilämpötila</option>
+              <option value="temp_max">Maksimilämpötila</option>
+              <option value="snow_depth">Lumensyvyys</option>
+              <option value="precipitation">Sademäärä</option>
             </select>
           </div>
 
           <div class="control-group">
             <label>
               <input type="checkbox" id="toggle-anomaly-timeline" checked />
-              Show Timeline
-            </label>
-            <label>
-              <input type="checkbox" id="toggle-winter" checked />
-              Show Winter Progression
+              Näytä aikajana
             </label>
             <label>
               <input type="checkbox" id="toggle-stations" />
-              Show Stations
+              Näytä asemat
             </label>
             <label>
               <input type="checkbox" id="toggle-table" />
-              Show Data Table
+              Näytä taulukko
             </label>
           </div>
         </div>
@@ -69,11 +69,11 @@
           <!-- Legend Sidebar -->
           <aside id="legend-sidebar">
             <div id="legend-content">
-              <h3>Legend</h3>
+              <h3>Selite</h3>
 
               <!-- Color Scale -->
               <div class="legend-section">
-                <h4 id="legend-metric-title">Air Temperature</h4>
+                <h4 id="legend-metric-title">Ilman lämpötila</h4>
                 <canvas
                   id="color-scale-canvas"
                   width="200"
@@ -85,50 +85,10 @@
                 </div>
               </div>
 
-              <!-- Anomalies Legend -->
-              <div class="legend-section">
-                <h4>Weather Anomalies</h4>
-                <div class="anomaly-legend-item">
-                  <span
-                    class="anomaly-color"
-                    style="background: #2171b5"
-                  ></span>
-                  <span>Extreme Cold (≤-25°C)</span>
-                </div>
-                <div class="anomaly-legend-item">
-                  <span
-                    class="anomaly-color"
-                    style="background: #6baed6"
-                  ></span>
-                  <span>Cold Snap (3+ days)</span>
-                </div>
-                <div class="anomaly-legend-item">
-                  <span
-                    class="anomaly-color"
-                    style="background: #de2d26"
-                  ></span>
-                  <span>Heat Wave (3+ days)</span>
-                </div>
-                <div class="anomaly-legend-item">
-                  <span
-                    class="anomaly-color"
-                    style="background: #756bb1"
-                  ></span>
-                  <span>Return Winter</span>
-                </div>
-                <div class="anomaly-legend-item">
-                  <span
-                    class="anomaly-color"
-                    style="background: #fdae6b"
-                  ></span>
-                  <span>Temperature Jump (±15°C)</span>
-                </div>
-              </div>
-
               <!-- Current Date Info -->
               <div class="legend-section">
-                <h4>Current Date</h4>
-                <div id="current-date-display">Loading...</div>
+                <h4>Valittu päivä</h4>
+                <div id="current-date-display">Ladataan...</div>
                 <div id="current-stats">
                   <!-- Populated dynamically -->
                 </div>
@@ -141,17 +101,28 @@
             <div id="map"></div>
             <div id="loading-indicator" class="hidden">
               <div class="spinner"></div>
-              <span>Loading data...</span>
+              <span>Ladataan dataa...</span>
             </div>
           </div>
 
           <!-- Info Sidebar (Right) -->
           <aside id="info-sidebar">
             <div id="info-content">
-              <h3>Active Anomalies</h3>
+              <h3>Aktiiviset ilmiöt</h3>
               <div id="active-anomalies-list-right">
-                <p class="no-anomalies-message">No anomalies on this date</p>
+                <p class="no-anomalies-message">Ei ilmiöitä tänä päivänä</p>
               </div>
+            </div>
+          </aside>
+
+          <!-- Phenomenon Detail Panel (slides in next to info sidebar) -->
+          <aside id="phenomenon-detail-panel" class="hidden">
+            <div class="detail-panel-header">
+              <h4 id="detail-panel-title">Ilmiön tiedot</h4>
+              <button id="close-detail-panel" title="Sulje">×</button>
+            </div>
+            <div id="detail-panel-content">
+              <!-- Populated dynamically -->
             </div>
           </aside>
         </div>
@@ -161,7 +132,7 @@
           <!-- Timeline with Brush & Zoom -->
           <div id="anomaly-timeline" class="anomaly-timeline-visible">
             <div class="anomaly-timeline-header">
-              <h4>Timeline</h4>
+              <h4>Aikajana</h4>
               <span class="anomaly-legend-inline">
                 <span class="legend-item"
                   ><span class="cold-spell-icon"></span> Pakkasjakso</span
@@ -183,7 +154,8 @@
                   ><span class="slippery-bar-icon"></span> Liukkausriski</span
                 >
                 <span class="legend-item"
-                  ><span class="frost-marker-icon"></span> Ensimmäinen yöpakkanen</span
+                  ><span class="frost-marker-icon"></span> Ensimmäinen
+                  yöpakkanen</span
                 >
                 <span class="legend-item"
                   ><span class="frost-bar-icon"></span> Nollaraja alittuu</span
@@ -208,7 +180,7 @@
                 >
               </span>
               <span class="brush-hint"
-                >Drag on the overview below to select time range</span
+                >Vedä alla olevasta yleiskuvasta valitaksesi aikaväli</span
               >
             </div>
             <!-- Detail (Focus) View - shows selected range in detail -->
@@ -247,9 +219,9 @@
           <!-- Controls -->
           <div id="compare-controls">
             <div class="control-group">
-              <label for="zone-selector">Zone:</label>
+              <label for="zone-selector">Alue:</label>
               <select id="zone-selector">
-                <option value="all">All Zones</option>
+                <option value="all">Kaikki alueet</option>
                 <option value="Etelä-Suomi" selected>Etelä-Suomi</option>
                 <option value="Keski-Suomi">Keski-Suomi</option>
                 <option value="Pohjois-Suomi">Pohjois-Suomi</option>
@@ -288,14 +260,11 @@
                 title="Jakso, jolloin yöpakkanen ja päivällä sulamislämpötila luovat liukkautta (yö <0°C, päivä 0-5°C)"
                 ><span class="slippery-bar-icon"></span> Liukkausriski</span
               >
-              <span
-                class="legend-item"
-                title="Ensimmäinen yöpakkanen syksyllä"
-                ><span class="frost-marker-icon"></span> Ensimmäinen yöpakkanen</span
+              <span class="legend-item" title="Ensimmäinen yöpakkanen syksyllä"
+                ><span class="frost-marker-icon"></span> Ensimmäinen
+                yöpakkanen</span
               >
-              <span
-                class="legend-item"
-                title="Yölämpötila laskee alle 0°C"
+              <span class="legend-item" title="Yölämpötila laskee alle 0°C"
                 ><span class="frost-bar-icon"></span> Nollaraja alittuu</span
               >
               <span
@@ -341,31 +310,31 @@
       <!-- Tab Content: Data Management -->
       <div id="data-management-tab" class="tab-content">
         <div id="data-fetcher">
-          <h2>Data Management</h2>
+          <h2>Datan hallinta</h2>
 
           <!-- Data Status Card -->
           <div class="data-status-card">
             <div class="status-header">
               <span class="status-icon" id="data-status-icon">●</span>
-              <h3>Data Status</h3>
+              <h3>Datan tila</h3>
             </div>
             <div class="status-details">
               <div class="status-row">
-                <span class="status-label">Date Range:</span>
+                <span class="status-label">Aikaväli:</span>
                 <span class="status-value" id="data-date-range"
-                  >Loading...</span
+                  >Ladataan...</span
                 >
               </div>
               <div class="status-row">
-                <span class="status-label">Stations:</span>
+                <span class="status-label">Asemat:</span>
                 <span class="status-value" id="data-station-count">-</span>
               </div>
               <div class="status-row">
-                <span class="status-label">Observations:</span>
+                <span class="status-label">Havainnot:</span>
                 <span class="status-value" id="data-observation-count">-</span>
               </div>
               <div class="status-row">
-                <span class="status-label">Last Updated:</span>
+                <span class="status-label">Päivitetty:</span>
                 <span class="status-value" id="data-last-updated">-</span>
               </div>
             </div>
@@ -373,7 +342,7 @@
 
           <!-- Zone Coverage -->
           <div class="zone-coverage-section">
-            <h3>Zone Coverage</h3>
+            <h3>Alueiden kattavuus</h3>
             <div id="zone-coverage-list">
               <!-- Populated dynamically -->
             </div>
@@ -381,13 +350,13 @@
 
           <!-- Actions -->
           <div class="data-actions">
-            <h3>Quick Actions</h3>
+            <h3>Toiminnot</h3>
             <div class="action-buttons">
               <button id="btn-refresh-30" class="primary-button">
-                Refresh Last 30 Days
+                Päivitä viimeiset 30 päivää
               </button>
               <button id="btn-refresh-5years" class="primary-button">
-                Delete data and get last 5 years
+                Poista data ja hae 5 vuotta
               </button>
             </div>
           </div>
@@ -396,7 +365,7 @@
           <div id="operation-status" class="operation-status hidden">
             <div class="operation-header">
               <span class="operation-icon spinning">⟳</span>
-              <span id="operation-text">Processing...</span>
+              <span id="operation-text">Käsitellään...</span>
             </div>
             <div class="progress-container">
               <div class="progress-bar-modern">
@@ -411,9 +380,9 @@
 
           <!-- Activity Log -->
           <div class="activity-log-section">
-            <h3>Activity Log</h3>
+            <h3>Tapahtumaloki</h3>
             <div id="log-container" class="log-container">
-              <div class="log-entry info">Ready</div>
+              <div class="log-entry info">Valmis</div>
             </div>
           </div>
         </div>

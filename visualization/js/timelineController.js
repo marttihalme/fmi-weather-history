@@ -3,6 +3,12 @@
  * Manages date slider, play/pause animation, and speed control
  */
 
+// Finnish month abbreviations for d3 formatting
+const finnishMonthsShort = ["Tammi", "Helmi", "Maalis", "Huhti", "Touko", "Kesä", "Heinä", "Elo", "Syys", "Loka", "Marras", "Joulu"];
+
+// Custom Finnish date formatter for month + year
+const finnishMonthYear = (date) => `${finnishMonthsShort[date.getMonth()]} ${date.getFullYear()}`;
+
 const TimelineController = {
   currentDate: null,
   dates: [],
@@ -44,6 +50,104 @@ const TimelineController = {
     tempJump: true,
   },
 
+  // Phenomenon type configurations for Active Anomalies list
+  phenomenonConfig: {
+    cold_spell: {
+      icon: "❄️",
+      cssClass: "cold-spell",
+      label: "Pakkasjakso",
+      color: "rgba(33, 113, 181, 0.6)",
+      description: "Pakkasjakso tunnistetaan, kun vähintään kolmena peräkkäisenä päivänä vuorokauden keskilämpötila pysyy alle -10°C. Tämä kuvaa merkittävää kylmää jaksoa, joka vaikuttaa arkeen ja luontoon.",
+    },
+    warm_spell: {
+      icon: "🌡️",
+      cssClass: "warm-spell",
+      label: "Lämpökatko",
+      color: "rgba(253, 174, 107, 0.6)",
+      description: "Lämpökatko havaitaan talvikaudella, kun vähintään kahtena peräkkäisenä päivänä vuorokauden keskilämpötila nousee yli 0°C. Tämä voi aiheuttaa lumen sulamista ja liukkautta.",
+    },
+    winter_start: {
+      icon: "🌨️",
+      cssClass: "winter-start",
+      label: "Talvikausi alkaa",
+      color: "#4a90e2",
+      description: "Talvikauden alku määritetään, kun 5 päivän liukuva keskilämpötila laskee pysyvästi alle 0°C syksyllä. Tämä merkitsee pysyvän talvisään alkamista alueella.",
+    },
+    winter_end: {
+      icon: "🌸",
+      cssClass: "winter-end",
+      label: "Talvikausi päättyy",
+      color: "#e27d60",
+      description: "Talvikauden loppu tunnistetaan, kun 5 päivän liukuva keskilämpötila nousee pysyvästi yli 0°C keväällä. Tämä merkitsee kevään tuloa ja lumien sulamisen alkamista.",
+    },
+    slippery_start: {
+      icon: "⚠️",
+      cssClass: "slippery-start",
+      label: "Liukkauskausi alkaa",
+      color: "#ff9800",
+      description: "Liukkauskauden alku määritetään ensimmäisestä päivästä syksyllä, jolloin yölämpötila laskee alle 0°C ja päivälämpötila on 0-5°C. Nämä olosuhteet aiheuttavat jäätymis-sulamis-kierteen.",
+    },
+    slippery_period: {
+      icon: "🧊",
+      cssClass: "slippery-period",
+      label: "Liukkausriski",
+      color: "rgba(255, 152, 0, 0.8)",
+      description: "Liukkausriski lasketaan päivistä, jolloin yölämpötila on alle 0°C ja päivälämpötila on 0-5°C. Tällöin tiet ja kävelytiet voivat olla erityisen liukkaita jäätymis-sulamis-ilmiön vuoksi.",
+    },
+    first_frost: {
+      icon: "🌙",
+      cssClass: "first-frost",
+      label: "Ensimmäinen yöpakkanen",
+      color: "#00bcd4",
+      description: "Ensimmäinen yöpakkanen on syksyn ensimmäinen päivä, jolloin vuorokauden minimilämpötila laskee alle 0°C. Tämä on merkki kasvukauden päättymisestä ja syksyn edistymisestä.",
+    },
+    frost_period: {
+      icon: "🥶",
+      cssClass: "frost-period",
+      label: "Hallajakso",
+      color: "rgba(0, 188, 212, 0.5)",
+      description: "Hallajakso kattaa päivät, jolloin yölämpötila laskee alle 0°C. Jakso lasketaan ensimmäisestä yöpakkasesta eteenpäin ja kuvaa hallariski-aikaa syksyllä.",
+    },
+    "Äärimmäinen kylmyys": {
+      icon: "❄️",
+      cssClass: "extreme-cold",
+      label: "Äärimmäinen kylmyys",
+      color: "#2171b5",
+      description: "Äärimmäinen kylmyys tunnistetaan, kun vuorokauden minimilämpötila laskee -25°C tai alle. Nämä ovat harvinaisia ja vaarallisia pakkaspäiviä, jotka vaativat erityistä varautumista.",
+    },
+    "Ankara pakkasjakso": {
+      icon: "🥶",
+      cssClass: "cold-snap",
+      label: "Ankara pakkasjakso",
+      color: "#6baed6",
+      description: "Ankara pakkasjakso havaitaan, kun vähintään kolmena peräkkäisenä päivänä vuorokauden maksimilämpötila pysyy alle -15°C. Tämä tarkoittaa, että päiväsälläkään ei lämpene merkittävästi.",
+    },
+    Hellejakso: {
+      icon: "☀️",
+      cssClass: "heat-wave",
+      label: "Hellejakso",
+      color: "#de2d26",
+      description: "Hellejakso tunnistetaan, kun vähintään kolmena peräkkäisenä päivänä vuorokauden maksimilämpötila nousee yli +25°C. Hellejaksot ovat merkittäviä kesäsääilmiöitä Suomessa.",
+    },
+    Takatalvi: {
+      icon: "⛄",
+      cssClass: "return-winter",
+      label: "Takatalvi",
+      color: "#756bb1",
+      description: "Takatalvi tunnistetaan, kun kevään edistyttyä ja lämpötilojen noustua pysyvästi plussan puolelle, tulee uusi pakkasjakso. Takatalvi on tyypillinen ilmiö Suomen keväässä.",
+    },
+    "Äkillinen lämpeneminen": {
+      icon: "⚡",
+      cssClass: "temp-jump",
+      label: "Lämpöhyppy",
+      color: "#fdae6b",
+      description: "Lämpöhyppy tunnistetaan, kun vuorokauden keskilämpötila muuttuu yli 15°C edelliseen päivään verrattuna. Näin suuret äkilliset muutokset ovat harvinaisia ja voivat johtua säärintamista.",
+    },
+  },
+
+  // Currently expanded phenomenon for detail panel
+  expandedPhenomenon: null,
+
   callbacks: {
     onDateChange: null,
     onPlayStatusChange: null,
@@ -69,6 +173,19 @@ const TimelineController = {
     this.initializeAnomalyTimeline();
     this.attachEventHandlers();
     this.attachLegendToggles();
+    this.attachDetailPanelCloseHandler();
+  },
+
+  /**
+   * Attach close button handler for detail panel
+   */
+  attachDetailPanelCloseHandler() {
+    const closeBtn = document.getElementById("close-detail-panel");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        this.closePhenomenonDetail();
+      });
+    }
   },
 
   /**
@@ -85,10 +202,10 @@ const TimelineController = {
     const dateCurrentEl = document.getElementById("date-current");
     const currentDateDisplay = document.getElementById("current-date-display");
 
-    if (dateMinEl) dateMinEl.textContent = minDate;
-    if (dateMaxEl) dateMaxEl.textContent = maxDate;
-    if (dateCurrentEl) dateCurrentEl.textContent = this.currentDate;
-    if (currentDateDisplay) currentDateDisplay.textContent = this.currentDate;
+    if (dateMinEl) dateMinEl.textContent = this.formatDisplayDate(minDate);
+    if (dateMaxEl) dateMaxEl.textContent = this.formatDisplayDate(maxDate);
+    if (dateCurrentEl) dateCurrentEl.textContent = this.formatDisplayDate(this.currentDate);
+    if (currentDateDisplay) currentDateDisplay.textContent = this.formatDisplayDate(this.currentDate);
   },
 
   /**
@@ -1271,10 +1388,10 @@ const TimelineController = {
       tickFormat = d3.timeFormat("%d.%m");
       ticks = d3.timeWeek.every(1);
     } else if (daysDiff <= 365) {
-      tickFormat = d3.timeFormat("%b %Y");
+      tickFormat = finnishMonthYear;
       ticks = d3.timeMonth.every(1);
     } else {
-      tickFormat = d3.timeFormat("%b %Y");
+      tickFormat = finnishMonthYear;
       ticks = d3.timeMonth.every(3);
     }
 
@@ -1409,7 +1526,7 @@ const TimelineController = {
       const anomalyIcons = {
         "Äärimmäinen kylmyys": "❄️",
         "Ankara pakkasjakso": "🥶",
-        Hellejakso: "🔥",
+        Hellejakso: "☀️",
         Takatalvi: "⛄",
         "Äkillinen lämpeneminen": "⚡",
       };
@@ -1914,11 +2031,11 @@ const TimelineController = {
 
     // Update both date displays
     if (dateDisplayTimeline) {
-      dateDisplayTimeline.textContent = this.currentDate;
+      dateDisplayTimeline.textContent = this.formatDisplayDate(this.currentDate);
     }
 
     if (dateDisplayLegend) {
-      dateDisplayLegend.textContent = this.currentDate;
+      dateDisplayLegend.textContent = this.formatDisplayDate(this.currentDate);
     }
 
     // Redraw anomaly timeline with new current date indicator
@@ -1930,6 +2047,7 @@ const TimelineController = {
 
   /**
    * Update the active anomalies list in both sidebars
+   * Now shows all 13 phenomenon types, not just anomalies
    */
   updateActiveAnomaliesList() {
     const leftContainer = document.getElementById("active-anomalies-list");
@@ -1939,58 +2057,35 @@ const TimelineController = {
 
     if (!this.currentDate) return;
 
-    const anomalies = DataLoader.getAnomaliesForDate(this.currentDate);
-
-    // Anomaly type CSS classes
-    const anomalyClasses = {
-      "Äärimmäinen kylmyys": "extreme-cold",
-      "Ankara pakkasjakso": "cold-snap",
-      Hellejakso: "heat-wave",
-      Takatalvi: "return-winter",
-      "Äkillinen lämpeneminen": "temp-jump",
-    };
-
-    // Anomaly icons
-    const anomalyIcons = {
-      "Äärimmäinen kylmyys": "❄️",
-      "Ankara pakkasjakso": "🥶",
-      Hellejakso: "🔥",
-      Takatalvi: "⛄",
-      "Äkillinen lämpeneminen": "⚡",
-    };
+    // Get all phenomena for current date (all 13 types)
+    const allPhenomena = DataLoader.getAllPhenomenaForDate(this.currentDate);
 
     // Build HTML for left sidebar (compact version)
     if (leftContainer) {
-      if (!anomalies || anomalies.length === 0) {
+      if (!allPhenomena || allPhenomena.length === 0) {
         leftContainer.innerHTML =
-          '<p style="color: #999; font-size: 12px;">No anomalies on this date</p>';
+          '<p style="color: #999; font-size: 12px;">Ei ilmiöitä tänä päivänä</p>';
       } else {
         let html = "";
-        anomalies.forEach((anomaly) => {
-          const cssClass = anomalyClasses[anomaly.type] || "";
-          const icon = anomalyIcons[anomaly.type] || "⚠️";
+        allPhenomena.forEach((phenomenon) => {
+          const config = this.phenomenonConfig[phenomenon.type];
+          if (!config) return;
 
           let details = [];
-          if (anomaly.duration_days > 1) {
-            details.push(`Duration: ${anomaly.duration_days} days`);
+          if (phenomenon.duration_days && phenomenon.duration_days > 1) {
+            details.push(`${phenomenon.duration_days} pv`);
           }
-          if (
-            anomaly.min_temperature !== null &&
-            anomaly.min_temperature !== undefined
-          ) {
-            details.push(`Min: ${anomaly.min_temperature.toFixed(1)}°C`);
+          if (phenomenon.min_temp !== null && phenomenon.min_temp !== undefined) {
+            details.push(`Min: ${phenomenon.min_temp.toFixed(1)}°C`);
           }
-          if (
-            anomaly.max_temperature !== null &&
-            anomaly.max_temperature !== undefined
-          ) {
-            details.push(`Max: ${anomaly.max_temperature.toFixed(1)}°C`);
+          if (phenomenon.max_temp !== null && phenomenon.max_temp !== undefined) {
+            details.push(`Max: ${phenomenon.max_temp.toFixed(1)}°C`);
           }
 
           html += `
-            <div class="active-anomaly-item ${cssClass}">
-              <span class="anomaly-type">${icon} ${anomaly.type}</span>
-              <span class="anomaly-zone">${anomaly.zone}</span>
+            <div class="active-anomaly-item ${config.cssClass}">
+              <span class="anomaly-type">${config.icon} ${config.label}</span>
+              <span class="anomaly-zone">${phenomenon.zone}</span>
               ${
                 details.length > 0
                   ? `<div class="anomaly-details">${details.join(" • ")}</div>`
@@ -2005,65 +2100,603 @@ const TimelineController = {
 
     // Build HTML for right sidebar (card-style version with more details)
     if (rightContainer) {
-      if (!anomalies || anomalies.length === 0) {
+      if (!allPhenomena || allPhenomena.length === 0) {
         rightContainer.innerHTML =
-          '<p class="no-anomalies-message">No anomalies on this date</p>';
+          '<p class="no-anomalies-message">Ei ilmiöitä tänä päivänä</p>';
       } else {
         let html = "";
-        anomalies.forEach((anomaly) => {
-          const cssClass = anomalyClasses[anomaly.type] || "";
-          const icon = anomalyIcons[anomaly.type] || "⚠️";
-
-          // Format dates
-          const startDate = anomaly.start_date || anomaly.date;
-          const endDate =
-            anomaly.end_date ||
-            (startDate && anomaly.duration_days > 1
-              ? this.addDays(startDate, anomaly.duration_days - 1)
-              : startDate);
-
-          const dateStr =
-            anomaly.duration_days > 1
-              ? `${this.formatShortDate(startDate)} - ${this.formatShortDate(
-                  endDate
-                )}`
-              : this.formatShortDate(startDate);
-
-          // Build value string
-          let valueStr = "";
-          if (
-            anomaly.min_temperature !== null &&
-            anomaly.min_temperature !== undefined
-          ) {
-            valueStr = `Min: <strong>${anomaly.min_temperature.toFixed(
-              1
-            )}°C</strong>`;
-          }
-          if (
-            anomaly.max_temperature !== null &&
-            anomaly.max_temperature !== undefined
-          ) {
-            if (valueStr) valueStr += " / ";
-            valueStr += `Max: <strong>${anomaly.max_temperature.toFixed(
-              1
-            )}°C</strong>`;
-          }
-
-          html += `
-            <div class="anomaly-card ${cssClass}">
-              <div class="anomaly-header">
-                <span class="anomaly-type">${icon} ${anomaly.type}</span>
-                <span class="anomaly-zone">${anomaly.zone}</span>
-              </div>
-              <div class="anomaly-dates">${dateStr}${
-            anomaly.duration_days > 1 ? ` (${anomaly.duration_days} pv)` : ""
-          }</div>
-              ${valueStr ? `<div class="anomaly-value">${valueStr}</div>` : ""}
-            </div>
-          `;
+        allPhenomena.forEach((phenomenon, index) => {
+          html += this.renderPhenomenonCard(phenomenon, index);
         });
         rightContainer.innerHTML = html;
+
+        // Attach click handlers for detail panel
+        this.attachPhenomenonClickHandlers();
       }
+    }
+  },
+
+  /**
+   * Render a single phenomenon card for the right sidebar
+   * @param {Object} phenomenon - Phenomenon data object
+   * @param {number} index - Index for data attribute
+   * @returns {string} HTML string for the card
+   */
+  renderPhenomenonCard(phenomenon, index) {
+    const config = this.phenomenonConfig[phenomenon.type];
+    if (!config) {
+      console.warn("No config for phenomenon type:", phenomenon.type);
+      return "";
+    }
+
+    const icon = config.icon || "•";
+    const cssClass = config.cssClass || "";
+
+    // Format dates
+    let dateStr = "";
+    if (phenomenon.start_date && phenomenon.end_date) {
+      dateStr = `${this.formatShortDate(phenomenon.start_date)} - ${this.formatShortDate(phenomenon.end_date)}`;
+      if (phenomenon.duration_days && phenomenon.duration_days > 1) {
+        dateStr += ` (${phenomenon.duration_days} pv)`;
+      }
+    } else if (phenomenon.date) {
+      dateStr = this.formatShortDate(phenomenon.date);
+    } else if (phenomenon.start_date) {
+      dateStr = this.formatShortDate(phenomenon.start_date);
+      if (phenomenon.duration_days && phenomenon.duration_days > 1) {
+        const endDate = this.addDays(phenomenon.start_date, phenomenon.duration_days - 1);
+        dateStr = `${this.formatShortDate(phenomenon.start_date)} - ${this.formatShortDate(endDate)} (${phenomenon.duration_days} pv)`;
+      }
+    }
+
+    // Build details array
+    let details = [];
+
+    if (phenomenon.min_temp !== null && phenomenon.min_temp !== undefined) {
+      details.push(`Min: <strong>${phenomenon.min_temp.toFixed(1)}°C</strong>`);
+    }
+    if (phenomenon.max_temp !== null && phenomenon.max_temp !== undefined) {
+      details.push(`Max: <strong>${phenomenon.max_temp.toFixed(1)}°C</strong>`);
+    }
+    if (phenomenon.avg_min_temp !== null && phenomenon.avg_min_temp !== undefined) {
+      details.push(`Ka. min: <strong>${phenomenon.avg_min_temp.toFixed(1)}°C</strong>`);
+    }
+    if (phenomenon.avg_max_temp !== null && phenomenon.avg_max_temp !== undefined) {
+      details.push(`Ka. max: <strong>${phenomenon.avg_max_temp.toFixed(1)}°C</strong>`);
+    }
+    if (phenomenon.high_risk_days) {
+      details.push(`Korkea riski: <strong>${phenomenon.high_risk_days} pv</strong>`);
+    }
+    if (phenomenon.frost_temp !== null && phenomenon.frost_temp !== undefined) {
+      details.push(`Lämpötila: <strong>${phenomenon.frost_temp.toFixed(1)}°C</strong>`);
+    }
+    if (phenomenon.total_days) {
+      details.push(`Kesto: <strong>${phenomenon.total_days} pv</strong>`);
+    }
+    if (phenomenon.risk_days_total) {
+      details.push(`Riskipäiviä: <strong>${phenomenon.risk_days_total} pv</strong>`);
+    }
+
+    const valueStr = details.join(" / ");
+
+    // Season/year info
+    let contextStr = "";
+    if (phenomenon.season) {
+      contextStr = `Kausi: ${phenomenon.season}`;
+    } else if (phenomenon.year) {
+      contextStr = `Vuosi: ${phenomenon.year}`;
+    }
+
+    // Check if this card is expanded
+    const isExpanded = this.expandedPhenomenon &&
+      this.expandedPhenomenon.type === phenomenon.type &&
+      this.expandedPhenomenon.zone === phenomenon.zone &&
+      this.expandedPhenomenon.start_date === (phenomenon.start_date || phenomenon.date);
+
+    return `
+      <div class="anomaly-card phenomenon-card ${cssClass}${isExpanded ? " expanded" : ""}"
+           data-phenomenon-index="${index}"
+           data-phenomenon-type="${phenomenon.type}"
+           data-phenomenon-zone="${phenomenon.zone}"
+           data-phenomenon-start="${phenomenon.start_date || phenomenon.date || ""}"
+           data-phenomenon-end="${phenomenon.end_date || ""}">
+        <div class="anomaly-header">
+          <span class="anomaly-type">${icon} ${config.label}</span>
+          <span class="anomaly-zone">${phenomenon.zone}</span>
+        </div>
+        ${dateStr ? `<div class="anomaly-dates">${dateStr}</div>` : ""}
+        ${contextStr ? `<div class="phenomenon-context">${contextStr}</div>` : ""}
+        ${valueStr ? `<div class="anomaly-value">${valueStr}</div>` : ""}
+      </div>
+    `;
+  },
+
+  /**
+   * Attach click handlers to phenomenon cards for detail panel
+   */
+  attachPhenomenonClickHandlers() {
+    const cards = document.querySelectorAll(".phenomenon-card");
+    const detailPanel = document.getElementById("phenomenon-detail-panel");
+
+    cards.forEach((card) => {
+      card.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const type = card.dataset.phenomenonType;
+        const zone = card.dataset.phenomenonZone;
+        const startDate = card.dataset.phenomenonStart;
+        const endDate = card.dataset.phenomenonEnd;
+
+        const currentlyExpanded = card.classList.contains("expanded");
+
+        // Close any other expanded cards
+        document.querySelectorAll(".phenomenon-card.expanded").forEach((c) => {
+          c.classList.remove("expanded");
+        });
+
+        if (currentlyExpanded) {
+          // Close this card
+          this.expandedPhenomenon = null;
+          if (detailPanel) {
+            detailPanel.classList.add("hidden");
+          }
+          // Update URL
+          this.clearPhenomenonFromURL();
+        } else {
+          // Expand this card
+          card.classList.add("expanded");
+          this.expandedPhenomenon = { type, zone, start_date: startDate, end_date: endDate };
+
+          // Show detail panel
+          this.showPhenomenonDetails(type, zone, startDate, endDate);
+
+          // Update URL for deep linking
+          this.updateURLForPhenomenon(type, zone, this.currentDate);
+        }
+      });
+    });
+  },
+
+  /**
+   * Close the phenomenon detail panel
+   */
+  closePhenomenonDetail() {
+    this.expandedPhenomenon = null;
+    document.querySelectorAll(".phenomenon-card.expanded").forEach((c) => {
+      c.classList.remove("expanded");
+    });
+    const detailPanel = document.getElementById("phenomenon-detail-panel");
+    if (detailPanel) {
+      detailPanel.classList.add("hidden");
+    }
+    this.clearPhenomenonFromURL();
+  },
+
+  /**
+   * Show detailed information for a phenomenon
+   * @param {string} type - Phenomenon type
+   * @param {string} zone - Zone name
+   * @param {string} startDate - Start date
+   * @param {string} endDate - End date (optional)
+   */
+  showPhenomenonDetails(type, zone, startDate, endDate) {
+    const detailPanel = document.getElementById("phenomenon-detail-panel");
+    const detailContent = document.getElementById("detail-panel-content");
+    const titleEl = document.getElementById("detail-panel-title");
+
+    if (!detailPanel || !detailContent) return;
+
+    const config = this.phenomenonConfig[type];
+    if (!config) return;
+
+    titleEl.textContent = `${config.icon} ${config.label} - ${zone}`;
+
+    // Build detail panel content
+    let html = '<div class="detail-sections">';
+
+    // Section 1: Summary info
+    html += '<div class="detail-section summary-section">';
+    html += "<h5>Yhteenveto</h5>";
+    html += this.buildSummarySection(type, zone, startDate, endDate);
+    html += "</div>";
+
+    // Section 2: Temperature chart (show for all phenomena with duration)
+    // Types with duration: _spell, _period, Hellejakso, pakkasjakso, Takatalvi, lämpeneminen
+    const hasDuration = endDate ||
+      type.includes("_spell") ||
+      type.includes("_period") ||
+      type.includes("jakso") ||  // Hellejakso, pakkasjakso
+      type === "Takatalvi" ||
+      type.includes("lämpeneminen");
+
+    if (startDate && hasDuration) {
+      html += '<div class="detail-section chart-section">';
+      html += "<h5>Lämpötilakehitys</h5>";
+      html += '<div id="phenomenon-temp-chart"></div>';
+      html += "</div>";
+    }
+
+    // Section 3: Station measurements
+    html += '<div class="detail-section stations-section">';
+    html += "<h5>Asemamittaukset</h5>";
+    html += '<div id="phenomenon-stations-list"></div>';
+    html += "</div>";
+
+    // Section 4: Description of how the phenomenon is calculated
+    if (config.description) {
+      html += '<div class="detail-section description-section">';
+      html += "<h5>Miten ilmiö tunnistetaan?</h5>";
+      html += `<p class="phenomenon-description">${config.description}</p>`;
+      html += "</div>";
+    }
+
+    html += "</div>";
+
+    detailContent.innerHTML = html;
+    detailPanel.classList.remove("hidden");
+
+    // Render temperature chart
+    const effectiveEndDate = endDate || (startDate ? this.addDays(startDate, 0) : null);
+    if (startDate) {
+      this.renderTemperatureChart(zone, startDate, effectiveEndDate);
+    }
+
+    // Render station measurements
+    this.renderStationMeasurements(zone);
+  },
+
+  /**
+   * Build summary section HTML
+   * @param {string} type - Phenomenon type
+   * @param {string} zone - Zone name
+   * @param {string} startDate - Start date
+   * @param {string} endDate - End date
+   * @returns {string} HTML string
+   */
+  buildSummarySection(type, zone, startDate, endDate) {
+    let html = '<div class="summary-grid">';
+
+    if (startDate) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Alkupäivä</span>
+        <span class="summary-value">${this.formatShortDate(startDate)}</span>
+      </div>`;
+    }
+
+    if (endDate && endDate !== startDate) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Loppupäivä</span>
+        <span class="summary-value">${this.formatShortDate(endDate)}</span>
+      </div>`;
+
+      // Calculate duration
+      const duration = this.daysBetween(startDate, endDate) + 1;
+      html += `<div class="summary-item">
+        <span class="summary-label">Kesto</span>
+        <span class="summary-value">${duration} päivää</span>
+      </div>`;
+    }
+
+    html += "</div>";
+    return html;
+  },
+
+  /**
+   * Calculate days between two dates
+   * @param {string} date1 - Start date
+   * @param {string} date2 - End date
+   * @returns {number} Number of days
+   */
+  daysBetween(date1, date2) {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    const diffTime = Math.abs(d2 - d1);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  },
+
+  /**
+   * Map zone display name to zone key used in zone summary data
+   * @param {string} zoneName - Display name like "Etelä-Suomi"
+   * @returns {string} Zone key like "etela_suomi"
+   */
+  getZoneKey(zoneName) {
+    const zoneMap = {
+      "Etelä-Suomi": "etela_suomi",
+      "Keski-Suomi": "keski_suomi",
+      "Pohjois-Suomi": "pohjois_suomi",
+      "Lappi": "lappi",
+    };
+    return zoneMap[zoneName] || zoneName;
+  },
+
+  /**
+   * Render temperature progression chart using D3
+   * @param {string} zone - Zone name (display name like "Etelä-Suomi")
+   * @param {string} startDate - Start date
+   * @param {string} endDate - End date
+   */
+  renderTemperatureChart(zone, startDate, endDate) {
+    const chartContainer = document.getElementById("phenomenon-temp-chart");
+    if (!chartContainer) return;
+
+    // Map zone name to zone key used in data
+    const zoneKey = this.getZoneKey(zone);
+
+    // Collect daily data for the period
+    const dailyData = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate || startDate);
+
+    // Extend range by a few days for context
+    start.setDate(start.getDate() - 2);
+    end.setDate(end.getDate() + 2);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split("T")[0];
+      const zoneData = DataLoader.getZoneData(dateStr, zoneKey);
+
+      if (zoneData) {
+        dailyData.push({
+          date: new Date(dateStr),
+          temp_mean: zoneData.temp_mean,
+          temp_min: zoneData.temp_min,
+          temp_max: zoneData.temp_max,
+        });
+      }
+    }
+
+    if (dailyData.length === 0) {
+      chartContainer.innerHTML = '<p class="no-data">Ei lämpötiladataa saatavilla</p>';
+      return;
+    }
+
+    // D3 chart rendering
+    const margin = { top: 10, right: 30, bottom: 30, left: 40 };
+    const width = chartContainer.clientWidth - margin.left - margin.right || 220;
+    const height = 150 - margin.top - margin.bottom;
+
+    // Clear previous chart
+    d3.select(chartContainer).selectAll("*").remove();
+
+    const svg = d3
+      .select(chartContainer)
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Scales
+    const x = d3
+      .scaleTime()
+      .domain(d3.extent(dailyData, (d) => d.date))
+      .range([0, width]);
+
+    const y = d3
+      .scaleLinear()
+      .domain([
+        d3.min(dailyData, (d) => d.temp_min) - 2,
+        d3.max(dailyData, (d) => d.temp_max) + 2,
+      ])
+      .nice()
+      .range([height, 0]);
+
+    // Area between min and max
+    const area = d3
+      .area()
+      .x((d) => x(d.date))
+      .y0((d) => y(d.temp_min))
+      .y1((d) => y(d.temp_max));
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "rgba(52, 152, 219, 0.15)")
+      .attr("d", area);
+
+    // Lines
+    const lineMax = d3
+      .line()
+      .x((d) => x(d.date))
+      .y((d) => y(d.temp_max));
+
+    const lineMean = d3
+      .line()
+      .x((d) => x(d.date))
+      .y((d) => y(d.temp_mean));
+
+    const lineMin = d3
+      .line()
+      .x((d) => x(d.date))
+      .y((d) => y(d.temp_min));
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "none")
+      .attr("stroke", "#e74c3c")
+      .attr("stroke-width", 1.5)
+      .attr("d", lineMax);
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "none")
+      .attr("stroke", "#3498db")
+      .attr("stroke-width", 2)
+      .attr("d", lineMean);
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "none")
+      .attr("stroke", "#2980b9")
+      .attr("stroke-width", 1.5)
+      .attr("d", lineMin);
+
+    // Zero line
+    if (y.domain()[0] < 0 && y.domain()[1] > 0) {
+      svg
+        .append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", y(0))
+        .attr("y2", y(0))
+        .attr("stroke", "#999")
+        .attr("stroke-dasharray", "3,3")
+        .attr("stroke-width", 1);
+    }
+
+    // Axes
+    svg
+      .append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x).ticks(4).tickFormat(d3.timeFormat("%d.%m")))
+      .selectAll("text")
+      .style("font-size", "9px");
+
+    svg
+      .append("g")
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll("text")
+      .style("font-size", "9px");
+
+    // Legend
+    const legend = svg.append("g").attr("transform", `translate(${width - 50}, 5)`);
+
+    legend
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", 15)
+      .attr("y1", 0)
+      .attr("y2", 0)
+      .attr("stroke", "#e74c3c")
+      .attr("stroke-width", 1.5);
+    legend.append("text").attr("x", 18).attr("y", 4).attr("font-size", "8px").text("Max");
+
+    legend
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", 15)
+      .attr("y1", 12)
+      .attr("y2", 12)
+      .attr("stroke", "#3498db")
+      .attr("stroke-width", 2);
+    legend.append("text").attr("x", 18).attr("y", 16).attr("font-size", "8px").text("Ka.");
+
+    legend
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", 15)
+      .attr("y1", 24)
+      .attr("y2", 24)
+      .attr("stroke", "#2980b9")
+      .attr("stroke-width", 1.5);
+    legend.append("text").attr("x", 18).attr("y", 28).attr("font-size", "8px").text("Min");
+  },
+
+  /**
+   * Render station measurements for the current date and zone
+   * @param {string} zone - Zone name (display name like "Etelä-Suomi")
+   */
+  renderStationMeasurements(zone) {
+    const stationsContainer = document.getElementById("phenomenon-stations-list");
+    if (!stationsContainer) return;
+
+    // Map zone name to zone key used in data
+    const zoneKey = this.getZoneKey(zone);
+
+    // Get station data for the current date
+    const stationData = DataLoader.getStationDataForDate(this.currentDate);
+
+    // Filter by zone (can match either zone key or zone_name)
+    const zoneStations = stationData.filter((s) => s.zone === zoneKey || s.zone_name === zone);
+
+    if (zoneStations.length === 0) {
+      stationsContainer.innerHTML = '<p class="no-data">Ei asemadataa saatavilla</p>';
+      return;
+    }
+
+    // Sort by temperature
+    zoneStations.sort((a, b) => (a.temp_mean || 0) - (b.temp_mean || 0));
+
+    // Build station list
+    let html = '<div class="stations-grid">';
+
+    zoneStations.forEach((station) => {
+      const tempMax = station.temp_max !== null ? station.temp_max.toFixed(1) + "°C" : "-";
+      const tempMean = station.temp_mean !== null ? station.temp_mean.toFixed(1) + "°C" : "-";
+      const tempMin = station.temp_min !== null ? station.temp_min.toFixed(1) + "°C" : "-";
+
+      html += `
+        <div class="station-item">
+          <div class="station-name">${station.station_name || station.name || "Tuntematon"}</div>
+          <div class="station-temps">
+            <span class="temp-max" title="Max">${tempMax}</span>
+            <span class="temp-mean" title="Keskiarvo">${tempMean}</span>
+            <span class="temp-min" title="Min">${tempMin}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    html += "</div>";
+    stationsContainer.innerHTML = html;
+  },
+
+  /**
+   * Update URL query parameters for deep linking
+   * @param {string} type - Phenomenon type
+   * @param {string} zone - Zone name
+   * @param {string} date - Current date
+   */
+  updateURLForPhenomenon(type, zone, date) {
+    const params = new URLSearchParams(window.location.search);
+    params.set("date", date);
+    params.set("phenomenon", type);
+    params.set("zone", zone);
+
+    const newURL = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, "", newURL);
+  },
+
+  /**
+   * Clear phenomenon parameters from URL
+   */
+  clearPhenomenonFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    params.delete("phenomenon");
+    params.delete("zone");
+
+    const newURL = params.toString()
+      ? `${window.location.pathname}?${params.toString()}`
+      : window.location.pathname;
+    window.history.pushState({}, "", newURL);
+  },
+
+  /**
+   * Parse URL parameters and restore state (for deep linking)
+   */
+  parseURLParameters() {
+    const params = new URLSearchParams(window.location.search);
+
+    const date = params.get("date");
+    const phenomenon = params.get("phenomenon");
+    const zone = params.get("zone");
+
+    if (date && this.dates.includes(date)) {
+      this.setDate(date);
+    }
+
+    if (phenomenon && zone) {
+      // Wait for UI to render, then expand the phenomenon
+      setTimeout(() => {
+        const card = document.querySelector(
+          `.phenomenon-card[data-phenomenon-type="${phenomenon}"][data-phenomenon-zone="${zone}"]`
+        );
+        if (card) {
+          card.click();
+        }
+      }, 100);
     }
   },
 
@@ -2074,6 +2707,15 @@ const TimelineController = {
     if (!dateStr) return "";
     const d = new Date(dateStr);
     return `${d.getDate()}.${d.getMonth() + 1}.`;
+  },
+
+  /**
+   * Format date for display in Finnish format (d.m.yyyy)
+   */
+  formatDisplayDate(dateStr) {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
   },
 
   /**
@@ -2093,7 +2735,7 @@ const TimelineController = {
   formatDate(date) {
     const d = new Date(date);
     const options = { year: "numeric", month: "long", day: "numeric" };
-    return d.toLocaleDateString("en-US", options);
+    return d.toLocaleDateString("fi-FI", options);
   },
 
   /**

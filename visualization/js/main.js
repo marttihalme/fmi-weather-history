@@ -10,6 +10,7 @@ const App = {
   currentMetric: "temp_mean", // Default metric matches our data
   baselineData: null,
   winterData: null,
+  showStations: false, // Stations hidden by default
 
   // Modules
   MapManager: null,
@@ -58,6 +59,9 @@ const App = {
 
       // Load and display initial data
       await this.loadAndDisplayData();
+
+      // Parse URL parameters for deep linking (must be after data load)
+      TimelineController.parseURLParameters();
 
       UIControls.hideLoading();
       UIControls.showInfo("Application loaded successfully");
@@ -272,6 +276,20 @@ const App = {
 
     // Update color legend
     this.updateColorLegend(metricKey);
+
+    // Add weather station markers with tooltips (only if enabled)
+    if (this.showStations) {
+      const stationDataArray = Object.values(stationData).filter(s => s.lat && s.lon);
+      if (stationDataArray.length > 0) {
+        MapManager.addWeatherStationMarkers(stationDataArray, metricKey);
+        console.log(`Added ${stationDataArray.length} station markers to map`);
+      }
+    } else {
+      // Remove stations if they exist
+      if (MapManager.layers && MapManager.layers.markers) {
+        MapManager.layers.markers.selectAll('.weather-station-marker').remove();
+      }
+    }
 
     // Update data table if enabled
     if (UIControls.isDataTableEnabled()) {
@@ -509,6 +527,16 @@ const App = {
         WinterProgressionLayer.enable(this.winterData);
       } else {
         WinterProgressionLayer.disable();
+      }
+    });
+
+    // Stations toggle
+    UIControls.onStationsToggle((enabled) => {
+      this.showStations = enabled;
+      console.log("Stations visibility:", enabled);
+      // Re-render to show/hide stations
+      if (this.currentData) {
+        this.displayData(this.currentData);
       }
     });
 

@@ -117,6 +117,21 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.anomaly-legend-inline .legend-item:hover {
+  opacity: 0.8;
+  background-color: rgba(52, 152, 219, 0.1);
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+.anomaly-legend-inline .legend-item.legend-disabled {
+  opacity: 0.3;
+  color: #999;
+  text-decoration: line-through;
 }
 
 .cold-spell-icon {
@@ -728,6 +743,21 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  transition: opacity 0.2s, color 0.2s;
+}
+
+.compare-legend-inline .legend-item:hover {
+  opacity: 0.8;
+  background-color: rgba(52, 152, 219, 0.1);
+  border-radius: 3px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+
+.compare-legend-inline .legend-item.legend-disabled {
+  opacity: 0.3;
+  color: #999;
+  text-decoration: line-through;
 }
 
 #years-timeline-container {
@@ -949,4 +979,303 @@
   background: rgba(255, 152, 0, 0.8);
   border: 1px solid #e65100;
   vertical-align: middle;
+}
+
+.frost-marker-icon {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: #00bcd4;
+  border: none;
+  vertical-align: middle;
+  position: relative;
+}
+
+.frost-marker-icon::before,
+.frost-marker-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 3px;
+  background: #00bcd4;
+}
+
+.frost-marker-icon::before {
+  top: -4px;
+}
+
+.frost-marker-icon::after {
+  bottom: -4px;
+}
+
+.frost-bar-icon {
+  display: inline-block;
+  width: 15px;
+  height: 6px;
+  background: rgba(0, 188, 212, 0.5);
+  border: 1px solid rgba(0, 188, 212, 0.8);
+  vertical-align: middle;
+}
+
+/* ===================================
+   Phenomenon Card Styles (Active Anomalies List)
+   =================================== */
+
+.phenomenon-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.phenomenon-card:hover {
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Expanded card state */
+.phenomenon-card.expanded {
+  background: linear-gradient(135deg, #e8f4f8 0%, #f0f8ff 100%);
+  border-left-width: 5px;
+  box-shadow: 0 3px 12px rgba(52, 152, 219, 0.25);
+}
+
+/* Phenomenon type-specific border colors */
+.anomaly-card.cold-spell {
+  border-left-color: rgba(33, 113, 181, 0.8);
+}
+
+.anomaly-card.warm-spell {
+  border-left-color: rgba(253, 174, 107, 0.9);
+}
+
+.anomaly-card.winter-start {
+  border-left-color: #4a90e2;
+}
+
+.anomaly-card.winter-end {
+  border-left-color: #e27d60;
+}
+
+.anomaly-card.slippery-start {
+  border-left-color: #ff9800;
+}
+
+.anomaly-card.slippery-period {
+  border-left-color: #e65100;
+}
+
+.anomaly-card.first-frost {
+  border-left-color: #00bcd4;
+}
+
+.anomaly-card.frost-period {
+  border-left-color: rgba(0, 188, 212, 0.8);
+}
+
+/* Context info (season/year) */
+.phenomenon-context {
+  color: #888;
+  font-size: 0.7rem;
+  margin-top: 0.15rem;
+  font-style: italic;
+}
+
+/* ===================================
+   Phenomenon Detail Panel (Inline sidebar next to info-sidebar)
+   =================================== */
+
+#phenomenon-detail-panel {
+  width: 320px;
+  min-width: 320px;
+  background: white;
+  border-left: 1px solid #ddd;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+#phenomenon-detail-panel.hidden {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  border-left: none;
+}
+
+.detail-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.detail-panel-header h4 {
+  font-size: 0.85rem;
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+#close-detail-panel {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  line-height: 1;
+  transition: color 0.2s;
+  border-radius: 50%;
+}
+
+#close-detail-panel:hover {
+  color: #333;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.detail-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.detail-section {
+  background: #fafafa;
+  padding: 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+
+.detail-section h5 {
+  font-size: 0.75rem;
+  margin: 0 0 0.4rem 0;
+  color: #555;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Summary section */
+.summary-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-label {
+  color: #666;
+  font-size: 0.7rem;
+}
+
+.summary-value {
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+/* Temperature chart */
+#phenomenon-temp-chart {
+  width: 100%;
+  min-height: 150px;
+}
+
+#phenomenon-temp-chart svg {
+  font-family: inherit;
+}
+
+#phenomenon-temp-chart .axis path,
+#phenomenon-temp-chart .axis line {
+  stroke: #ccc;
+}
+
+#phenomenon-temp-chart .axis text {
+  fill: #666;
+  font-size: 9px;
+}
+
+/* Stations section */
+.stations-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.station-item {
+  background: white;
+  padding: 0.4rem 0.5rem;
+  border-radius: 3px;
+  border-left: 3px solid #3498db;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.station-name {
+  font-weight: 500;
+  font-size: 0.7rem;
+  color: #2c3e50;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 0.5rem;
+}
+
+.station-temps {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  font-family: monospace;
+}
+
+.temp-max {
+  color: #e74c3c;
+}
+
+.temp-mean {
+  color: #3498db;
+  font-weight: 600;
+}
+
+.temp-min {
+  color: #2980b9;
+}
+
+.no-data {
+  color: #999;
+  font-style: italic;
+  font-size: 0.7rem;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+/* Phenomenon description section */
+.description-section {
+  background: #f8f9fa;
+  border-left: 3px solid #6c757d;
+}
+
+.phenomenon-description {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: #555;
+  margin: 0;
 }

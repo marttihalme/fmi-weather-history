@@ -59,7 +59,11 @@ const DataFetcher = {
         const stationData = DataLoader.getStationData();
 
         if (dateRange && range) {
-          dateRange.textContent = `${range.minDate} → ${range.maxDate}`;
+          const formatFinnishDate = (dateStr) => {
+            const d = new Date(dateStr);
+            return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+          };
+          dateRange.textContent = `${formatFinnishDate(range.minDate)} \u2192 ${formatFinnishDate(range.maxDate)}`;
         }
         if (stationCount && stations) {
           stationCount.textContent = stations.length;
