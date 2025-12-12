@@ -22,7 +22,7 @@
         </div>
         <nav id="tabs">
           <button class="tab-button active" data-tab="exploration">
-            Tutkimus
+            Kartta
           </button>
           <button class="tab-button" data-tab="compare-years">
             Vertaile vuosia
@@ -56,10 +56,6 @@
             <label>
               <input type="checkbox" id="toggle-stations" />
               Näytä asemat
-            </label>
-            <label>
-              <input type="checkbox" id="toggle-table" />
-              Näytä taulukko
             </label>
           </div>
         </div>
@@ -340,23 +336,32 @@
             </div>
           </div>
 
-          <!-- Zone Coverage -->
-          <div class="zone-coverage-section">
-            <h3>Alueiden kattavuus</h3>
-            <div id="zone-coverage-list">
-              <!-- Populated dynamically -->
+          <!-- Date Range Fetch -->
+          <div class="data-actions">
+            <h3>Hae säädataa</h3>
+            <div class="date-range-inputs">
+              <div class="date-input-group">
+                <label for="fetch-start-date">Alkupäivä:</label>
+                <input type="text" id="fetch-start-date" placeholder="pp.kk.vvvv" maxlength="10" />
+              </div>
+              <div class="date-input-group">
+                <label for="fetch-end-date">Loppupäivä:</label>
+                <input type="text" id="fetch-end-date" placeholder="pp.kk.vvvv" maxlength="10" />
+              </div>
+            </div>
+            <div class="action-buttons">
+              <button id="btn-fetch-range" class="primary-button">
+                Hae data ja päivitä analyysit
+              </button>
             </div>
           </div>
 
-          <!-- Actions -->
-          <div class="data-actions">
-            <h3>Toiminnot</h3>
+          <!-- Danger Zone -->
+          <div class="data-actions danger-zone">
+            <h3>Vaara-alue</h3>
             <div class="action-buttons">
-              <button id="btn-refresh-30" class="primary-button">
-                Päivitä viimeiset 30 päivää
-              </button>
-              <button id="btn-refresh-5years" class="primary-button">
-                Poista data ja hae 5 vuotta
+              <button id="btn-delete-all" class="danger-button">
+                Poista kaikki data
               </button>
             </div>
           </div>

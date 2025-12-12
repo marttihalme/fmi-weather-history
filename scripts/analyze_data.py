@@ -17,7 +17,11 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import json
+import functools
 from pathlib import Path
+
+# Force unbuffered output for real-time progress
+print = functools.partial(print, flush=True)
 
 # ============================================================================
 # POLKUMÄÄRITTELYT
@@ -67,11 +71,15 @@ ANOMALY_CONSECUTIVE_DAYS = 3
 
 def load_weather_data():
     """Lataa säädata dynaamisesti uusimmasta tiedostosta."""
-    csv_files = list(DATA_RAW.glob('weather_data_*_all.csv'))
-    if not csv_files:
-        raise FileNotFoundError(f"Ei löydy weather_data_*_all.csv tiedostoa kansiosta {DATA_RAW}")
-
-    csv_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+    # Prefer the new standard filename
+    standard_file = DATA_RAW / 'weather_data_all.csv'
+    if standard_file.exists():
+        csv_file = standard_file
+    else:
+        csv_files = list(DATA_RAW.glob('weather_data_*_all.csv'))
+        if not csv_files:
+            raise FileNotFoundError(f"Ei loydy weather_data_*.csv tiedostoa kansiosta {DATA_RAW}")
+        csv_file = max(csv_files, key=lambda f: f.stat().st_mtime)
     print(f"Luetaan tiedosto: {csv_file.name}")
 
     df = pd.read_csv(csv_file)

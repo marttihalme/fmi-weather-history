@@ -3,9 +3,13 @@ import pandas as pd
 from fmiopendata.wfs import download_stored_query
 from datetime import datetime, timedelta
 import time
+import functools
 from pathlib import Path
 import argparse
 import os
+
+# Force unbuffered output for real-time progress
+print = functools.partial(print, flush=True)
 
 # Määritä polut
 SCRIPT_DIR = Path(__file__).parent
@@ -123,6 +127,7 @@ def main():
     parser = argparse.ArgumentParser(description='Hae säädataa FMI:stä')
     parser.add_argument('--start', type=str, help='Alkupäivä (YYYY-MM-DD)')
     parser.add_argument('--end', type=str, help='Loppupäivä (YYYY-MM-DD)')
+    parser.add_argument('--merge', action='store_true', help='Yhdistä olemassa olevaan dataan')
     args = parser.parse_args()
 
     # Määritä aikaväli
@@ -169,28 +174,57 @@ def main():
     # Yhdistä kaikki DataFramet
     print("\n" + "=" * 70)
     print("Yhdistetään data...")
-    final_df = pd.concat(all_dataframes, ignore_index=True)
+    new_df = pd.concat(all_dataframes, ignore_index=True)
 
-    print(f"Yhteensä {len(final_df)} havaintoa")
-    print(f"Aikaväli: {final_df['date'].min()} - {final_df['date'].max()}")
+    print(f"Haettu {len(new_df)} havaintoa")
 
     # Luo data/raw -kansio jos ei ole
     DATA_RAW.mkdir(parents=True, exist_ok=True)
 
+    # Käytä yhtä vakiotiedostonimeä
+    output_file = DATA_RAW / "weather_data_all.csv"
+
+    # Merge-tila: yhdistä olemassa olevaan dataan
+    if args.merge and output_file.exists():
+        print(f"Ladataan olemassa oleva data: {output_file}")
+        existing_df = pd.read_csv(output_file)
+
+        # Varmista että date on string-muodossa YYYY-MM-DD
+        existing_df['date'] = pd.to_datetime(existing_df['date']).dt.strftime('%Y-%m-%d')
+        new_df['date'] = pd.to_datetime(new_df['date']).dt.strftime('%Y-%m-%d')
+
+        print(f"Olemassa oleva data: {len(existing_df)} havaintoa")
+        print(f"  Aikaväli: {existing_df['date'].min()} - {existing_df['date'].max()}")
+        print(f"Uusi data: {len(new_df)} havaintoa")
+        print(f"  Aikaväli: {new_df['date'].min()} - {new_df['date'].max()}")
+
+        # Poista vanhasta datasta VAIN ne päivät jotka ovat uuden haun aikavälillä
+        # Näin säilytetään data joka ei ole haun aikavälillä
+        new_date_min = new_df['date'].min()
+        new_date_max = new_df['date'].max()
+
+        # Säilytä vanhasta datasta kaikki joka on haetun aikavälin ULKOPUOLELLA
+        preserved_df = existing_df[
+            (existing_df['date'] < new_date_min) | (existing_df['date'] > new_date_max)
+        ].copy()
+
+        print(f"Säilytetään aikavälin ulkopuolelta: {len(preserved_df)} havaintoa")
+
+        # Yhdistä säilytetty vanha data + uusi data
+        final_df = pd.concat([preserved_df, new_df], ignore_index=True)
+        final_df.drop_duplicates(subset=['date', 'fmisid'], keep='last', inplace=True)
+        final_df.sort_values(by=['date', 'station_name'], inplace=True)
+
+        print(f"Yhdistetty data: {len(final_df)} havaintoa")
+    else:
+        final_df = new_df
+
+    print(f"Yhteensä {len(final_df)} havaintoa")
+    print(f"Aikaväli: {final_df['date'].min()} - {final_df['date'].max()}")
+
     # Tallenna kokonaisdata
-    output_file = DATA_RAW / f"weather_data_{start_year}_{end_year}_all.csv"
     final_df.to_csv(output_file, index=False)
     print(f"\n[ok] Tallennettu: {output_file}")
-
-    # Tallenna vyöhykkeittäin
-    print("\nTallennetaan vyöhykkeittäin:")
-    for zone_id, zone_info in ZONES.items():
-        zone_df = final_df[final_df['zone'] == zone_id]
-        zone_file = DATA_RAW / f"weather_data_{start_year}_{end_year}_{zone_id}.csv"
-        zone_df.to_csv(zone_file, index=False)
-
-        station_count = zone_df['station_name'].nunique()
-        print(f"  {zone_info['name']:20} {len(zone_df):8} riviä, {station_count:3} asemaa -> {zone_file}")
 
     # Tilastot
     print("\n" + "=" * 70)

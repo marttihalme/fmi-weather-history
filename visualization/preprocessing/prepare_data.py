@@ -14,8 +14,12 @@ import pandas as pd
 import json
 import subprocess
 import sys
+import functools
 from pathlib import Path
 from datetime import datetime
+
+# Force unbuffered output for real-time progress
+print = functools.partial(print, flush=True)
 
 # Paths relative to script location
 BASE_DIR = Path(__file__).parent.parent.parent
@@ -25,14 +29,54 @@ DATA_DIR.mkdir(exist_ok=True)
 print("Finnish Weather Data Preprocessor")
 print("=" * 50)
 
+# 0. Run analysis scripts FIRST (they generate weather_anomalies.csv etc.)
+print("\n0. Running analysis scripts...")
+SCRIPTS_DIR = BASE_DIR / "scripts"
+
+analysis_scripts = ['analyze_data.py']
+for script in analysis_scripts:
+    script_path = SCRIPTS_DIR / script
+    if script_path.exists():
+        print(f"   Running {script}...")
+        try:
+            # Stream output line by line to parent process
+            process = subprocess.Popen(
+                [sys.executable, '-u', str(script_path)],
+                cwd=str(SCRIPTS_DIR),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            for line in iter(process.stdout.readline, ''):
+                print(f"   {line.rstrip()}")
+            process.wait(timeout=300)
+            if process.returncode == 0:
+                print(f"   [ok] {script} completed")
+            else:
+                print(f"   [WARN] {script} failed with code {process.returncode}")
+        except subprocess.TimeoutExpired:
+            process.kill()
+            print(f"   [WARN] {script} timed out")
+        except Exception as e:
+            print(f"   [WARN] Error running {script}: {e}")
+    else:
+        print(f"   [WARN] Script not found: {script_path}")
+
 # 1. Load main weather data - find the actual file dynamically
 print("\n1. Loading weather data...")
 raw_dir = BASE_DIR / "data" / "raw"
-csv_files = list(raw_dir.glob("weather_data_*_all.csv"))
-if not csv_files:
-    raise FileNotFoundError(f"No weather_data_*_all.csv found in {raw_dir}")
-# Use the most recent file if multiple exist
-csv_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+
+# Prefer the new standard filename, fall back to glob pattern
+standard_file = raw_dir / "weather_data_all.csv"
+if standard_file.exists():
+    csv_file = standard_file
+else:
+    csv_files = list(raw_dir.glob("weather_data_*_all.csv"))
+    if not csv_files:
+        raise FileNotFoundError(f"No weather_data_*.csv found in {raw_dir}")
+    # Use the most recent file if multiple exist
+    csv_file = max(csv_files, key=lambda f: f.stat().st_mtime)
 print(f"   Using: {csv_file.name}")
 df = pd.read_csv(csv_file)
 print(f"   Loaded {len(df):,} observations")
@@ -205,39 +249,6 @@ print(f"\nNext steps:")
 print(f"  1. Run: python preprocessing/generate_grids.py")
 print(f"  2. Start server: python backend/server.py")
 print(f"  3. Open: http://localhost:8000")
-
-# 7. Run all analysis scripts
-print("\n" + "=" * 50)
-print("RUNNING ANALYSIS SCRIPTS")
-print("=" * 50)
-
-analysis_scripts = [
-    'analyze_data.py'
-]
-
-SCRIPTS_DIR = BASE_DIR / "scripts"
-
-for script in analysis_scripts:
-    script_path = SCRIPTS_DIR / script
-    if script_path.exists():
-        print(f"\n► Running {script}...")
-        try:
-            result = subprocess.run(
-                [sys.executable, str(script_path)],
-                cwd=str(SCRIPTS_DIR),
-                capture_output=False,
-                timeout=300
-            )
-            if result.returncode == 0:
-                print(f"  ✓ {script} completed successfully")
-            else:
-                print(f"  ✗ {script} failed with code {result.returncode}")
-        except subprocess.TimeoutExpired:
-            print(f"  ✗ {script} timed out")
-        except Exception as e:
-            print(f"  ✗ Error running {script}: {e}")
-    else:
-        print(f"\n✗ Script not found: {script_path}")
 
 print("\n" + "=" * 50)
 print("ALL PROCESSING COMPLETE")

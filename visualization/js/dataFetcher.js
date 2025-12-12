@@ -21,22 +21,67 @@ const DataFetcher = {
    * Initialize Data Management UI
    */
   initializeDataManagementUI() {
-    // Refresh 30 days button
-    const btnRefresh30 = document.getElementById("btn-refresh-30");
-    if (btnRefresh30) {
-      btnRefresh30.addEventListener("click", () => this.handleRefresh30());
+    // Date range fetch button
+    const btnFetchRange = document.getElementById("btn-fetch-range");
+    if (btnFetchRange) {
+      btnFetchRange.addEventListener("click", () => this.handleFetchRange());
     }
 
-    // Refresh 5 years button
-    const btnRefresh5Years = document.getElementById("btn-refresh-5years");
-    if (btnRefresh5Years) {
-      btnRefresh5Years.addEventListener("click", () =>
-        this.handleRefresh5Years()
-      );
+    // Delete all data button
+    const btnDeleteAll = document.getElementById("btn-delete-all");
+    if (btnDeleteAll) {
+      btnDeleteAll.addEventListener("click", () => this.handleDeleteAll());
     }
+
+    // Initialize date inputs with defaults
+    this.initializeDateInputs();
 
     // Update data status when tab is shown
     this.updateDataStatus();
+  },
+
+  /**
+   * Format date to Finnish format (d.m.yyyy)
+   */
+  formatFinnishDate(date) {
+    if (!date) return "";
+    const d = date instanceof Date ? date : new Date(date);
+    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+  },
+
+  /**
+   * Parse Finnish date format (d.m.yyyy) to ISO format (yyyy-mm-dd)
+   */
+  parseFinnishDate(finnishDate) {
+    if (!finnishDate) return null;
+    const parts = finnishDate.split(".");
+    if (parts.length !== 3) return null;
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+    if (day < 1 || day > 31 || month < 1 || month > 12 || year < 1900) return null;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  },
+
+  /**
+   * Initialize date input fields with default values
+   */
+  initializeDateInputs() {
+    const startInput = document.getElementById("fetch-start-date");
+    const endInput = document.getElementById("fetch-end-date");
+
+    if (startInput && endInput) {
+      // Default: start of current year to yesterday
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      // Set values in Finnish format
+      startInput.value = this.formatFinnishDate(startOfYear);
+      endInput.value = this.formatFinnishDate(yesterday);
+    }
   },
 
   /**
@@ -132,42 +177,45 @@ const DataFetcher = {
   },
 
   /**
-   * Handle refresh 30 days button
+   * Handle fetch date range button
    */
-  async handleRefresh30() {
-    this.showOperation("Refreshing last 30 days...");
-    this.addLog("Starting refresh of last 30 days", "info");
+  async handleFetchRange() {
+    const startInput = document.getElementById("fetch-start-date");
+    const endInput = document.getElementById("fetch-end-date");
 
-    try {
-      const result = await this.refreshLast30Days();
-      this.hideOperation();
-      this.showOperationSuccess("Data refreshed successfully!");
-      this.addLog("Refresh completed successfully", "success");
-
-      // Reload the data
-      if (typeof DataLoader !== "undefined") {
-        await DataLoader.loadAll();
-        this.updateDataStatus();
-      }
-    } catch (error) {
-      this.showOperationError(`Failed: ${error.message}`);
-      this.addLog(`Error: ${error.message}`, "error");
+    if (!startInput || !endInput || !startInput.value || !endInput.value) {
+      this.addLog("Valitse alku- ja loppupäivä", "error");
+      return;
     }
-  },
 
-  /**
-   * Handle refresh 5 years button - uses SSE for progress streaming
-   */
-  async handleRefresh5Years() {
-    this.showOperationWithProgress("Aloitetaan 5 vuoden datan hakua...", 0);
-    this.addLog("Aloitetaan 5 vuoden datan haku", "info");
+    // Parse Finnish dates to ISO format
+    const startDate = this.parseFinnishDate(startInput.value);
+    const endDate = this.parseFinnishDate(endInput.value);
+
+    if (!startDate || !endDate) {
+      this.addLog("Virheellinen päivämäärä. Käytä muotoa pp.kk.vvvv", "error");
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      this.addLog("Alkupäivä ei voi olla loppupäivän jälkeen", "error");
+      return;
+    }
+
+    // Calculate days
+    const days = Math.ceil(
+      (new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)
+    ) + 1;
+
+    this.showOperationWithProgress(`Haetaan dataa ${days} päivälle...`, 0);
+    this.addLog(`Aloitetaan haku: ${startDate} - ${endDate} (${days} päivää)`, "info");
 
     // Disable button during operation
-    const btn = document.getElementById("btn-refresh-5years");
+    const btn = document.getElementById("btn-fetch-range");
     if (btn) btn.disabled = true;
 
     try {
-      await this.streamRefresh5Years();
+      await this.streamFetchRange(startDate, endDate);
     } catch (error) {
       this.showOperationError(`Virhe: ${error.message}`);
       this.addLog(`Virhe: ${error.message}`, "error");
@@ -177,13 +225,53 @@ const DataFetcher = {
   },
 
   /**
-   * Stream refresh 5 years using Server-Sent Events
+   * Handle delete all data button
    */
-  streamRefresh5Years() {
-    return new Promise((resolve, reject) => {
-      // Use EventSource for SSE (requires GET, so we use POST via fetch with streaming)
-      fetch(`${this.baseURL}/refresh-5years`, {
+  async handleDeleteAll() {
+    if (!confirm("Haluatko varmasti poistaa kaiken säädatan ja analyysit? Tätä ei voi perua.")) {
+      return;
+    }
+
+    this.showOperation("Poistetaan dataa...");
+    this.addLog("Poistetaan kaikki data...", "warning");
+
+    const btn = document.getElementById("btn-delete-all");
+    if (btn) btn.disabled = true;
+
+    try {
+      const response = await fetch(`${this.baseURL}/delete-all-data`, {
         method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.statusText}`);
+      }
+
+      this.showOperationSuccess("Kaikki data poistettu!");
+      this.addLog("Data poistettu onnistuneesti", "success");
+      this.updateDataStatus();
+    } catch (error) {
+      this.showOperationError(`Virhe: ${error.message}`);
+      this.addLog(`Virhe: ${error.message}`, "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  },
+
+  /**
+   * Stream fetch date range using Server-Sent Events
+   */
+  streamFetchRange(startDate, endDate) {
+    return new Promise((resolve, reject) => {
+      fetch(`${this.baseURL}/fetch-range`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          start_date: startDate,
+          end_date: endDate,
+        }),
       })
         .then((response) => {
           if (!response.ok) {
@@ -207,14 +295,13 @@ const DataFetcher = {
             buffer = lines.pop(); // Keep incomplete line in buffer
 
             let eventType = null;
-            let eventData = null;
 
             for (const line of lines) {
               if (line.startsWith("event: ")) {
                 eventType = line.slice(7).trim();
               } else if (line.startsWith("data: ")) {
                 try {
-                  eventData = JSON.parse(line.slice(6));
+                  const eventData = JSON.parse(line.slice(6));
                   this.handleSSEEvent(eventType, eventData);
                 } catch (e) {
                   console.warn("Failed to parse SSE data:", line);
@@ -239,16 +326,18 @@ const DataFetcher = {
       this.showOperationWithProgress(data.message, data.percent);
 
       // Log important milestones
-      if (data.step === "fetch" && data.current_quarter) {
-        this.addLog(
-          `Jakso ${data.current_quarter}/${data.total_quarters}`,
-          "info"
-        );
-      } else if (data.step === "preprocess") {
+      if (data.step === "fetch" && data.current_quarter && data.current_quarter % 3 === 0) {
         this.addLog(data.message, "info");
+      } else if (data.step === "preprocess" || data.step === "analyze") {
+        this.addLog(data.message, "info");
+      } else if (data.step === "done") {
+        this.addLog(data.message, "success");
       }
     } else if (eventType === "complete") {
-      this.showOperationSuccess("5 vuoden data päivitetty!");
+      const msg = data.rows
+        ? `Valmis! Haettiin ${data.rows.toLocaleString()} havaintoa.`
+        : "Data päivitetty!";
+      this.showOperationSuccess(msg);
       this.addLog("Päivitys valmis", "success");
 
       // Reload the data
@@ -561,31 +650,6 @@ const DataFetcher = {
       return await response.json();
     } catch (error) {
       console.error("Error fetching winter data:", error);
-      throw error;
-    }
-  },
-
-  /**
-   * Refresh data for the last 30 days
-   * @returns {Promise} Promise resolving to success
-   */
-  async refreshLast30Days() {
-    this.isLoading = true;
-    try {
-      const response = await fetch(`${this.baseURL}/refresh-30`, {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to refresh data: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      this.isLoading = false;
-      return result;
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-      this.isLoading = false;
       throw error;
     }
   },

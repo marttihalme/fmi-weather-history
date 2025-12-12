@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 
 # Configuration
 PORT = 8000
@@ -52,19 +53,25 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_POST(self):
-        if self.path == '/api/refresh-30':
+        if self.path == '/api/fetch-range':
+            # Parse request body for date range
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8') if content_length else '{}'
             try:
-                self.refresh_last_30_days()
-                self.send_response(200)
+                params = json.loads(body)
+            except:
+                params = {}
+
+            start_date = params.get('start_date')
+            end_date = params.get('end_date')
+
+            if not start_date or not end_date:
+                self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({"status": "success", "message": "Data refreshed"}).encode())
-            except Exception as e:
-                self.send_response(500)
-                self.send_header('Content-Type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
-        elif self.path == '/api/refresh-5years':
+                self.wfile.write(json.dumps({"status": "error", "message": "start_date and end_date required"}).encode())
+                return
+
             # Use SSE for progress streaming
             self.send_response(200)
             self.send_header('Content-Type', 'text/event-stream')
@@ -73,9 +80,22 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
 
             try:
-                self.refresh_last_5_years_streaming()
+                self.fetch_date_range_streaming(start_date, end_date)
             except Exception as e:
                 self.send_sse_event('error', {'message': str(e)})
+
+        elif self.path == '/api/delete-all-data':
+            try:
+                self.delete_all_data()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success", "message": "All data deleted"}).encode())
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
         else:
             self.send_error(404, "Not Found")
 
@@ -85,31 +105,23 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(message.encode())
         self.wfile.flush()
 
-    def refresh_last_5_years_streaming(self):
-        """Refresh last 5 years with progress streaming via SSE"""
+    def fetch_date_range_streaming(self, start_date, end_date):
+        """Fetch data for date range with progress streaming via SSE"""
         from datetime import datetime, timedelta
-        import shutil
 
-        # Step 1: Delete existing data
         self.send_sse_event('progress', {
             'step': 'init',
-            'message': 'Poistetaan vanhaa dataa...',
+            'message': 'Valmistellaan hakua...',
             'percent': 0
         })
 
-        raw_dir = BASE_DIR.parent / "data" / "raw"
-        if raw_dir.exists():
-            shutil.rmtree(raw_dir)
-            raw_dir.mkdir(parents=True, exist_ok=True)
+        # Parse dates
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 
-        # Step 2: Calculate date range and quarters
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=1850)
-
-        # Generate quarters (same logic as fetch_historical_data.py)
+        # Generate quarters for the date range
         quarters = []
-        current = datetime.combine(start_date, datetime.min.time())
-        end_dt = datetime.combine(end_date, datetime.min.time())
+        current = start_dt
 
         while current <= end_dt:
             if current.month <= 3:
@@ -128,20 +140,21 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             current = quarter_end + timedelta(days=1)
 
         total_quarters = len(quarters)
+        total_days = (end_dt - start_dt).days + 1
 
         self.send_sse_event('progress', {
             'step': 'fetch',
-            'message': f'Haetaan dataa FMI:stä ({total_quarters} jaksoa)...',
-            'percent': 5,
-            'total_quarters': total_quarters
+            'message': f'Haetaan dataa FMI:stä ({total_days} päivää, {total_quarters} jaksoa)...',
+            'percent': 2,
+            'total_quarters': total_quarters,
+            'total_days': total_days
         })
 
-        # Step 3: Run fetch script with real-time output parsing
+        # Run fetch script with merge mode
         script_path = BASE_DIR.parent / "scripts" / "fetch_historical_data.py"
 
-        # Use -u flag for unbuffered output so SSE works in real-time
         process = subprocess.Popen(
-            [sys.executable, '-u', str(script_path), '--start', start_date.isoformat(), '--end', end_date.isoformat()],
+            [sys.executable, '-u', str(script_path), '--start', start_date, '--end', end_date, '--merge'],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -149,39 +162,48 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         )
 
         quarter_count = 0
-        for line in iter(process.stdout.readline, ''):
-            line = line.strip()
-            print(line)  # Log to server console
+        total_rows = 0
+        while True:
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            if line:
+                line = line.strip()
+                print(line)
 
-            # Parse progress from output
-            if line.startswith("Jakso "):
-                # "Jakso 1/21: 2020-01-01 - 2020-03-31"
-                try:
-                    parts = line.split("/")
-                    quarter_count = int(parts[0].replace("Jakso ", ""))
-                    # 5% for init, 80% for fetch, 15% for preprocessing
-                    percent = 5 + int((quarter_count / total_quarters) * 80)
+                if line.startswith("Jakso "):
+                    try:
+                        parts = line.split("/")
+                        quarter_count = int(parts[0].replace("Jakso ", ""))
+                        date_part = line.split(": ")[1] if ": " in line else ""
+                        percent = 2 + int((quarter_count / total_quarters) * 68)
+                        self.send_sse_event('progress', {
+                            'step': 'fetch',
+                            'message': f'Haetaan jaksoa {quarter_count}/{total_quarters}: {date_part}',
+                            'percent': percent,
+                            'current_quarter': quarter_count,
+                            'total_quarters': total_quarters
+                        })
+                    except:
+                        pass
+                elif "[ok]" in line and "Haettiin" in line:
+                    try:
+                        rows = int(line.split("Haettiin")[1].split("riviä")[0].strip())
+                        total_rows += rows
+                        self.send_sse_event('progress', {
+                            'step': 'fetch',
+                            'message': f'Jakso {quarter_count}/{total_quarters}: +{rows} havaintoa (yht. {total_rows})',
+                            'percent': 2 + int((quarter_count / total_quarters) * 68),
+                            'rows_fetched': total_rows
+                        })
+                    except:
+                        pass
+                elif "Yhdistetään" in line or "Tallennettu" in line:
                     self.send_sse_event('progress', {
                         'step': 'fetch',
-                        'message': f'Haetaan jaksoa {quarter_count}/{total_quarters}...',
-                        'percent': percent,
-                        'current_quarter': quarter_count,
-                        'total_quarters': total_quarters
+                        'message': line,
+                        'percent': 70
                     })
-                except:
-                    pass
-            elif "[ok]" in line and "Haettiin" in line:
-                # "    [ok] Haettiin 5234 riviä"
-                try:
-                    rows = int(line.split("Haettiin")[1].split("riviä")[0].strip())
-                    self.send_sse_event('progress', {
-                        'step': 'fetch',
-                        'message': f'Jakso {quarter_count}/{total_quarters}: {rows} havaintoa',
-                        'percent': 5 + int((quarter_count / total_quarters) * 80),
-                        'rows_fetched': rows
-                    })
-                except:
-                    pass
 
         process.wait()
 
@@ -189,15 +211,14 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_sse_event('error', {'message': 'Data-haku epäonnistui'})
             return
 
-        # Step 4: Run preprocessing
+        # Run preprocessing
         self.send_sse_event('progress', {
             'step': 'preprocess',
             'message': 'Esikäsitellään dataa...',
-            'percent': 85
+            'percent': 72
         })
 
         preprocess_path = BASE_DIR / "preprocessing" / "prepare_data.py"
-        # Use -u flag for unbuffered output
         process = subprocess.Popen(
             [sys.executable, '-u', str(preprocess_path)],
             stdout=subprocess.PIPE,
@@ -206,34 +227,68 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             bufsize=1
         )
 
-        for line in iter(process.stdout.readline, ''):
-            line = line.strip()
-            print(line)
+        while True:
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            if line:
+                line = line.strip()
+                print(line)
 
-            if "Loading weather data" in line:
-                self.send_sse_event('progress', {
-                    'step': 'preprocess',
-                    'message': 'Ladataan raakadataa...',
-                    'percent': 87
-                })
-            elif "Creating station-daily data" in line:
-                self.send_sse_event('progress', {
-                    'step': 'preprocess',
-                    'message': 'Luodaan asemakohtaista dataa...',
-                    'percent': 90
-                })
-            elif "Detecting anomalies" in line:
-                self.send_sse_event('progress', {
-                    'step': 'preprocess',
-                    'message': 'Tunnistetaan anomalioita...',
-                    'percent': 93
-                })
-            elif "winter" in line.lower():
-                self.send_sse_event('progress', {
-                    'step': 'preprocess',
-                    'message': 'Lasketaan talvikausia...',
-                    'percent': 96
-                })
+                if "Loading weather data" in line or "Loaded" in line:
+                    self.send_sse_event('progress', {
+                        'step': 'preprocess',
+                        'message': 'Ladataan raakadataa...',
+                        'percent': 74
+                    })
+                elif "Creating station-daily" in line or "station-daily" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'preprocess',
+                        'message': 'Luodaan asemakohtaista dataa...',
+                        'percent': 78
+                    })
+                elif "zone summar" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'preprocess',
+                        'message': 'Luodaan vyöhykeyhteenvetoja...',
+                        'percent': 82
+                    })
+                elif "station location" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'preprocess',
+                        'message': 'Päivitetään asematiedot...',
+                        'percent': 85
+                    })
+                elif "anomal" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'preprocess',
+                        'message': 'Käsitellään anomalioita...',
+                        'percent': 88
+                    })
+                elif "winter" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'preprocess',
+                        'message': 'Analysoidaan talvikausia...',
+                        'percent': 91
+                    })
+                elif "RUNNING ANALYSIS" in line or "Running analysis" in line:
+                    self.send_sse_event('progress', {
+                        'step': 'analyze',
+                        'message': 'Ajetaan analyysejä...',
+                        'percent': 94
+                    })
+                elif "analyze_data.py" in line:
+                    self.send_sse_event('progress', {
+                        'step': 'analyze',
+                        'message': 'Analysoidaan säädataa...',
+                        'percent': 96
+                    })
+                elif "completed" in line.lower() or "ALL PROCESSING COMPLETE" in line or "VALMIIT" in line:
+                    self.send_sse_event('progress', {
+                        'step': 'done',
+                        'message': 'Analyysit valmiit!',
+                        'percent': 99
+                    })
 
         process.wait()
 
@@ -244,79 +299,43 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         # Done!
         self.send_sse_event('progress', {
             'step': 'done',
-            'message': 'Valmis!',
+            'message': f'Valmis! Haettiin {total_rows} havaintoa.',
             'percent': 100
         })
-        self.send_sse_event('complete', {'status': 'success'})
+        self.send_sse_event('complete', {'status': 'success', 'rows': total_rows})
 
-    def refresh_last_30_days(self):
-        script_path = BASE_DIR.parent / "scripts" / "refresh_recent_data.py"
-        print(f"Running script: {script_path}")
-        result = subprocess.run([sys.executable, str(script_path)], capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"Script failed: {result.stderr}")
-            raise Exception(f"Script failed: {result.stderr}")
-        print(f"Script output: {result.stdout}")
-
-    def refresh_last_5_years(self):
-        """Refresh last 5 years (~1850 days) of data"""
-        from datetime import datetime, timedelta
+    def delete_all_data(self):
+        """Delete all weather data and analysis files"""
         import shutil
-        
-        # Delete all existing data
+
+        deleted = []
+
+        # Delete raw data
         raw_dir = BASE_DIR.parent / "data" / "raw"
         if raw_dir.exists():
-            print(f"Deleting existing data in {raw_dir}")
             shutil.rmtree(raw_dir)
             raw_dir.mkdir(parents=True, exist_ok=True)
-        
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=1850)
-        
-        script_path = BASE_DIR.parent / "scripts" / "fetch_historical_data.py"
-        print(f"Running script: {script_path} with range {start_date} to {end_date}")
+            deleted.append("data/raw")
 
-        env = os.environ.copy()
-        result = subprocess.run(
-            [sys.executable, str(script_path), '--start', start_date.isoformat(), '--end', end_date.isoformat()],
-            capture_output=True,
-            text=True,
-            env=env
-        )
-        if result.returncode != 0:
-            print(f"Script failed: {result.stderr}")
-            raise Exception(f"Script failed: {result.stderr}")
-        print(f"Script output: {result.stdout}")
-        
-        # Run preprocessing
-        preprocess_path = BASE_DIR / "preprocessing" / "prepare_data.py"
-        print(f"Running preprocessing: {preprocess_path}")
-        result = subprocess.run([sys.executable, str(preprocess_path)], capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"Preprocessing failed: {result.stderr}")
-            raise Exception(f"Preprocessing failed: {result.stderr}")
-        print(f"Preprocessing output: {result.stdout}")
+        # Delete analysis data
+        analysis_dir = BASE_DIR.parent / "data" / "analysis"
+        if analysis_dir.exists():
+            shutil.rmtree(analysis_dir)
+            analysis_dir.mkdir(parents=True, exist_ok=True)
+            deleted.append("data/analysis")
 
-    def fetch_date_range(self, start_date, end_date):
-        """Fetch data for a specific date range"""
-        script_path = BASE_DIR.parent / "scripts" / "fetch_historical_data.py"
-        print(f"Running script: {script_path} with range {start_date} to {end_date}")
+        # Delete visualization data (JSON files)
+        viz_data_dir = BASE_DIR / "data"
+        if viz_data_dir.exists():
+            for f in viz_data_dir.glob("*.json"):
+                f.unlink()
+                deleted.append(f"visualization/data/{f.name}")
+            for f in viz_data_dir.glob("*.json.gz"):
+                f.unlink()
+                deleted.append(f"visualization/data/{f.name}")
 
-        # Set environment variables for the script
-        env = os.environ.copy()
-        env['FETCH_START_DATE'] = start_date
-        env['FETCH_END_DATE'] = end_date
-
-        result = subprocess.run(
-            [sys.executable, str(script_path), '--start', start_date, '--end', end_date],
-            capture_output=True,
-            text=True,
-            env=env
-        )
-        if result.returncode != 0:
-            print(f"Script failed: {result.stderr}")
-            raise Exception(f"Script failed: {result.stderr}")
-        print(f"Script output: {result.stdout}")
+        print(f"Deleted: {deleted}")
+        return deleted
 
     def log_message(self, format, *args):
         # Custom logging format
@@ -372,22 +391,30 @@ def main():
     print("Server starting...")
     print("=" * 60)
 
-    # Create and start server
-    with socketserver.TCPServer(("", PORT), CustomHTTPRequestHandler) as httpd:
-        try:
-            print(f"\n✓ Server running at http://localhost:{PORT}")
-            print(f"\nAvailable routes:")
-            print(f"  http://localhost:{PORT}/explore         - Exploration view")
-            print(f"  http://localhost:{PORT}/compare-years   - Compare Years view")
-            print(f"  http://localhost:{PORT}/data-management - Data Management view")
-            print(f"\nServer logs:")
-            print("-" * 60)
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\n\n" + "=" * 60)
-            print("Server stopped by user")
-            print("=" * 60)
-            httpd.shutdown()
+    # Use ThreadingTCPServer for better Ctrl+C handling on Windows
+    class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    httpd = ThreadedTCPServer(("", PORT), CustomHTTPRequestHandler)
+
+    print(f"\n✓ Server running at http://localhost:{PORT}")
+    print(f"\nAvailable routes:")
+    print(f"  http://localhost:{PORT}/explore         - Exploration view")
+    print(f"  http://localhost:{PORT}/compare-years   - Compare Years view")
+    print(f"  http://localhost:{PORT}/data-management - Data Management view")
+    print(f"\nPress Ctrl+C to stop")
+    print("-" * 60)
+
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\n\n" + "=" * 60)
+        print("Server stopped by user")
+        print("=" * 60)
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
 
 
 if __name__ == "__main__":
