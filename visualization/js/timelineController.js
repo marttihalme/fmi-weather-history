@@ -29,8 +29,8 @@ const TimelineController = {
 
   // Dimensions
   margin: { top: 5, right: 20, bottom: 25, left: 80 },
-  focusHeight: 130,
-  contextHeight: 70,
+  focusHeight: 143,
+  contextHeight: 77,
   resizeTimeout: null,
 
   // Visibility toggles for different element types
@@ -746,6 +746,7 @@ const TimelineController = {
     };
 
     // Draw zone backgrounds and labels
+    const self = this;
     zones.forEach((zone, i) => {
       this.focusSvg
         .append("rect")
@@ -762,13 +763,24 @@ const TimelineController = {
         .attr("y", i * zoneHeight + zoneHeight / 2)
         .attr("text-anchor", "end")
         .attr("dominant-baseline", "middle")
-        .text(zone);
+        .style("cursor", "pointer")
+        .text(zone)
+        .on("mouseover", function() {
+          d3.select(this).attr("font-weight", "bold");
+          if (typeof MapManager !== 'undefined' && MapManager.highlightZone) {
+            MapManager.highlightZone(zone);
+          }
+        })
+        .on("mouseout", function() {
+          d3.select(this).attr("font-weight", "normal");
+          if (typeof MapManager !== 'undefined' && MapManager.clearZoneHighlight) {
+            MapManager.clearZoneHighlight();
+          }
+        });
     });
 
     // Draw slippery risk periods (focus view with tooltips)
     if (DataLoader.data.slipperyRisk && (this.visibility.slipperyStart || this.visibility.slipperyBar)) {
-      const self = this;
-
       DataLoader.data.slipperyRisk.forEach((risk) => {
         const zoneIndex = zones.indexOf(risk.zone);
         if (zoneIndex === -1) return;
@@ -884,8 +896,6 @@ const TimelineController = {
 
     // Draw first frost data (focus view with tooltips)
     if (DataLoader.data.firstFrost && (this.visibility.frostMarker || this.visibility.frostBar)) {
-      const self = this;
-
       DataLoader.data.firstFrost.forEach((frost) => {
         const zoneIndex = zones.indexOf(frost.zone);
         if (zoneIndex === -1) return;
@@ -989,8 +999,6 @@ const TimelineController = {
 
     // Draw winter periods with detailed cold/warm spells
     if (DataLoader.data.winterStarts && (this.visibility.coldSpell || this.visibility.warmSpell || this.visibility.winterStart || this.visibility.winterEnd)) {
-      const self = this;
-
       DataLoader.data.winterStarts.forEach((winter) => {
         const zoneIndex = zones.indexOf(winter.zone);
         if (zoneIndex === -1) return;
@@ -1292,7 +1300,6 @@ const TimelineController = {
     }
 
     // Draw anomaly bars with tooltips
-    const self = this;
     DataLoader.data.anomalies.forEach((anomaly) => {
       // Check visibility for this anomaly type
       let isVisible = false;
@@ -2179,14 +2186,6 @@ const TimelineController = {
 
     const valueStr = details.join(" / ");
 
-    // Season/year info
-    let contextStr = "";
-    if (phenomenon.season) {
-      contextStr = `Kausi: ${phenomenon.season}`;
-    } else if (phenomenon.year) {
-      contextStr = `Vuosi: ${phenomenon.year}`;
-    }
-
     // Check if this card is expanded
     const isExpanded = this.expandedPhenomenon &&
       this.expandedPhenomenon.type === phenomenon.type &&
@@ -2205,7 +2204,6 @@ const TimelineController = {
           <span class="anomaly-zone">${phenomenon.zone}</span>
         </div>
         ${dateStr ? `<div class="anomaly-dates">${dateStr}</div>` : ""}
-        ${contextStr ? `<div class="phenomenon-context">${contextStr}</div>` : ""}
         ${valueStr ? `<div class="anomaly-value">${valueStr}</div>` : ""}
       </div>
     `;
@@ -2701,12 +2699,12 @@ const TimelineController = {
   },
 
   /**
-   * Format date as short Finnish format (d.m.)
+   * Format date as Finnish format with year (d.m.yyyy)
    */
   formatShortDate(dateStr) {
     if (!dateStr) return "";
     const d = new Date(dateStr);
-    return `${d.getDate()}.${d.getMonth() + 1}.`;
+    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
   },
 
   /**

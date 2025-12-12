@@ -72,6 +72,30 @@ const YearCompare = {
       });
     }
 
+    // Detail panel close button handler
+    const closeBtn = document.getElementById("close-years-detail-panel");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        this.hideDetailPanel();
+      });
+    }
+
+    // Click outside to close detail panel
+    document.addEventListener("click", (e) => {
+      const panel = document.getElementById("years-detail-panel");
+      if (!panel || !panel.classList.contains("visible")) return;
+
+      // If click is outside panel and not on a phenomenon element, close it
+      if (
+        !panel.contains(e.target) &&
+        !e.target.closest(
+          ".compare-anomaly-bar, .winter-marker, .slippery-marker, .frost-marker, .line-hover-area, .slippery-bar, .frost-bar, .cold-spell, .warm-spell"
+        )
+      ) {
+        this.hideDetailPanel();
+      }
+    });
+
     // Attach legend toggle handlers
     this.attachLegendToggles();
   },
@@ -80,7 +104,9 @@ const YearCompare = {
    * Attach click handlers to legend items for toggling visibility
    */
   attachLegendToggles() {
-    const legendContainer = document.querySelector("#compare-controls .compare-legend-inline");
+    const legendContainer = document.querySelector(
+      "#compare-controls .compare-legend-inline"
+    );
     if (!legendContainer) return;
 
     const legendItems = legendContainer.querySelectorAll(".legend-item");
@@ -96,15 +122,21 @@ const YearCompare = {
       else if (item.querySelector(".warm-spell-icon")) visKey = "warmSpell";
       else if (item.querySelector(".winter-start-icon")) visKey = "winterStart";
       else if (item.querySelector(".winter-end-icon")) visKey = "winterEnd";
-      else if (item.querySelector(".slippery-start-icon")) visKey = "slipperyStart";
+      else if (item.querySelector(".slippery-start-icon"))
+        visKey = "slipperyStart";
       else if (item.querySelector(".slippery-bar-icon")) visKey = "slipperyBar";
       else if (item.querySelector(".frost-marker-icon")) visKey = "frostMarker";
       else if (item.querySelector(".frost-bar-icon")) visKey = "frostBar";
-      else if (item.querySelector(".anomaly-icon.extreme-cold")) visKey = "extremeCold";
-      else if (item.querySelector(".anomaly-icon.cold-snap")) visKey = "coldSnap";
-      else if (item.querySelector(".anomaly-icon.heat-wave")) visKey = "heatWave";
-      else if (item.querySelector(".anomaly-icon.return-winter")) visKey = "returnWinter";
-      else if (item.querySelector(".anomaly-icon.temp-jump")) visKey = "tempJump";
+      else if (item.querySelector(".anomaly-icon.extreme-cold"))
+        visKey = "extremeCold";
+      else if (item.querySelector(".anomaly-icon.cold-snap"))
+        visKey = "coldSnap";
+      else if (item.querySelector(".anomaly-icon.heat-wave"))
+        visKey = "heatWave";
+      else if (item.querySelector(".anomaly-icon.return-winter"))
+        visKey = "returnWinter";
+      else if (item.querySelector(".anomaly-icon.temp-jump"))
+        visKey = "tempJump";
 
       if (visKey) {
         item.addEventListener("click", () => {
@@ -129,12 +161,20 @@ const YearCompare = {
    * Render the year comparison timeline
    */
   render() {
+    console.log("YearCompare.render called");
     const container = document.getElementById("years-timeline");
-    if (!container) return;
+    if (!container) {
+      console.error("YearCompare: Container #years-timeline not found");
+      return;
+    }
 
     // Get data
     const winterData = DataLoader.data.winterStarts || [];
     const anomalies = DataLoader.data.anomalies || [];
+
+    console.log(
+      `YearCompare: Rendering with ${winterData.length} winter records and ${anomalies.length} anomalies`
+    );
 
     if (winterData.length === 0 && anomalies.length === 0) {
       container.innerHTML =
@@ -439,6 +479,18 @@ const YearCompare = {
             });
             rect.addEventListener("mouseleave", () => this.hideTooltip());
 
+            // Click handler for detail panel
+            rect.style.cursor = "pointer";
+            rect.addEventListener("click", () => {
+              this.showPhenomenonDetails("cold_spell", {
+                ...spell,
+                zone: winter.zone,
+                season: winter.season,
+                start_date: spell.start,
+                end_date: spell.end,
+              });
+            });
+
             svg.appendChild(rect);
           }
         });
@@ -476,6 +528,18 @@ const YearCompare = {
               this.showSpellTooltip(e, spell, winter, "warm");
             });
             rect.addEventListener("mouseleave", () => this.hideTooltip());
+
+            // Click handler for detail panel
+            rect.style.cursor = "pointer";
+            rect.addEventListener("click", () => {
+              this.showPhenomenonDetails("warm_spell", {
+                ...spell,
+                zone: winter.zone,
+                season: winter.season,
+                start_date: spell.start,
+                end_date: spell.end,
+              });
+            });
 
             svg.appendChild(rect);
           }
@@ -519,6 +583,9 @@ const YearCompare = {
               this.hideTooltip();
               line.style.strokeWidth = "2";
             });
+            hoverRect.addEventListener("click", () => {
+              this.showPhenomenonDetails("winter_start", { ...winter, zone });
+            });
             svg.appendChild(hoverRect);
           }
         }
@@ -560,6 +627,9 @@ const YearCompare = {
             hoverRect.addEventListener("mouseleave", () => {
               this.hideTooltip();
               line.style.strokeWidth = "2";
+            });
+            hoverRect.addEventListener("click", () => {
+              this.showPhenomenonDetails("winter_end", { ...winter, zone });
             });
             svg.appendChild(hoverRect);
           }
@@ -614,6 +684,9 @@ const YearCompare = {
               this.hideTooltip();
               line.style.strokeWidth = "2";
             });
+            hoverRect.addEventListener("click", () => {
+              this.showPhenomenonDetails("slippery_start", risk);
+            });
             svg.appendChild(hoverRect);
           }
         }
@@ -660,6 +733,12 @@ const YearCompare = {
               this.showSlipperyTooltip(e, period, risk);
             });
             rect.addEventListener("mouseleave", () => this.hideTooltip());
+
+            // Click handler
+            rect.style.cursor = "pointer";
+            rect.addEventListener("click", () => {
+              this.showPhenomenonDetails("slippery_period", { ...risk, ...period });
+            });
 
             svg.appendChild(rect);
           }
@@ -714,6 +793,9 @@ const YearCompare = {
               this.hideTooltip();
               line.style.strokeWidth = "2";
             });
+            hoverRect.addEventListener("click", () => {
+              this.showPhenomenonDetails("first_frost", frost);
+            });
             svg.appendChild(hoverRect);
           }
         }
@@ -756,6 +838,12 @@ const YearCompare = {
             });
             rect.addEventListener("mouseleave", () => this.hideTooltip());
 
+            // Click handler
+            rect.style.cursor = "pointer";
+            rect.addEventListener("click", () => {
+              this.showPhenomenonDetails("frost_period", { ...frost, ...period });
+            });
+
             svg.appendChild(rect);
           }
         });
@@ -776,11 +864,16 @@ const YearCompare = {
     yearAnomalies.forEach((anomaly) => {
       // Check visibility for this anomaly type
       let isVisible = false;
-      if (anomaly.type === "Äärimmäinen kylmyys") isVisible = this.visibility.extremeCold;
-      else if (anomaly.type === "Ankara pakkasjakso") isVisible = this.visibility.coldSnap;
-      else if (anomaly.type === "Hellejakso") isVisible = this.visibility.heatWave;
-      else if (anomaly.type === "Takatalvi") isVisible = this.visibility.returnWinter;
-      else if (anomaly.type === "Äkillinen lämpeneminen") isVisible = this.visibility.tempJump;
+      if (anomaly.type === "Äärimmäinen kylmyys")
+        isVisible = this.visibility.extremeCold;
+      else if (anomaly.type === "Ankara pakkasjakso")
+        isVisible = this.visibility.coldSnap;
+      else if (anomaly.type === "Hellejakso")
+        isVisible = this.visibility.heatWave;
+      else if (anomaly.type === "Takatalvi")
+        isVisible = this.visibility.returnWinter;
+      else if (anomaly.type === "Äkillinen lämpeneminen")
+        isVisible = this.visibility.tempJump;
 
       if (!isVisible) return;
 
@@ -818,6 +911,13 @@ const YearCompare = {
       });
       rect.addEventListener("mouseleave", () => {
         this.hideTooltip();
+      });
+
+      // Add click to show in detail panel
+      rect.style.cursor = "pointer";
+      rect.addEventListener("click", () => {
+        // Use original Finnish type to match phenomenonConfig keys
+        this.showPhenomenonDetails(anomaly.type, anomaly);
       });
 
       svg.appendChild(rect);
@@ -1188,6 +1288,438 @@ const YearCompare = {
       tooltip.style.display = "none";
     }
   },
+
+  /**
+   * Show detail panel
+   */
+  showDetailPanel() {
+    const panel = document.getElementById("years-detail-panel");
+    if (panel) {
+      panel.classList.remove("hidden");
+      panel.classList.add("visible");
+      // Re-render timeline to adjust width
+      setTimeout(() => this.render(), 50);
+    }
+  },
+
+  /**
+   * Hide detail panel
+   */
+  hideDetailPanel() {
+    const panel = document.getElementById("years-detail-panel");
+    if (panel) {
+      panel.classList.remove("visible");
+      panel.classList.add("hidden");
+      // Re-render timeline to adjust width
+      setTimeout(() => this.render(), 50);
+    }
+  },
+
+  /**
+   * Show phenomenon details in the detail panel
+   */
+  showPhenomenonDetails(type, data) {
+    const panel = document.getElementById("years-detail-panel");
+    const content = document.getElementById("years-detail-panel-content");
+    const titleEl = document.getElementById("years-detail-panel-title");
+
+    if (!content || !panel) return;
+
+    // Get phenomenon config from TimelineController if available
+    const config =
+      (typeof TimelineController !== "undefined" &&
+        TimelineController.phenomenonConfig?.[type]) || {
+        label: type,
+        icon: "📊",
+        color: "#666",
+      };
+
+    // Set title
+    const zoneName = data.zone || this.selectedZone;
+    titleEl.textContent = `${config.icon} ${config.label} - ${zoneName}`;
+
+    // Extract dates
+    const startDate =
+      data.start ||
+      data.start_date ||
+      data.winter_start ||
+      data.season_start ||
+      data.first_frost_date ||
+      data.date;
+    const endDate =
+      data.end || data.end_date || data.winter_end || data.season_end;
+
+    // Build detail panel content (matching Explore view structure)
+    let html = '<div class="detail-sections">';
+
+    // Section 1: Summary
+    html += '<div class="detail-section summary-section">';
+    html += "<h5>Yhteenveto</h5>";
+    html += this.buildSummarySection(data, type);
+    html += "</div>";
+
+    // Section 2: Temperature chart
+    // Show for phenomena with duration or specific types
+    const hasDuration =
+      endDate ||
+      type.includes("spell") ||
+      type.includes("jakso") ||
+      type.includes("period") ||
+      type.includes("kylmyys") ||
+      type === "Takatalvi" ||
+      type.includes("lämpeneminen");
+
+    if (startDate && hasDuration) {
+      html += '<div class="detail-section chart-section">';
+      html += "<h5>Lämpötilakehitys</h5>";
+      html += '<div id="years-phenomenon-temp-chart"></div>';
+      html += "</div>";
+    }
+
+    // Section 3: Description
+    if (config.description) {
+      html += '<div class="detail-section description-section">';
+      html += "<h5>Miten ilmiö tunnistetaan?</h5>";
+      html += `<p class="phenomenon-description">${config.description}</p>`;
+      html += "</div>";
+    }
+
+    html += "</div>";
+    content.innerHTML = html;
+
+    // Show panel
+    this.showDetailPanel();
+
+    // Render charts and data
+    if (startDate && hasDuration) {
+      const effectiveEndDate = endDate || startDate;
+      this.renderTemperatureChart(zoneName, startDate, effectiveEndDate);
+    }
+
+  },
+
+  /**
+   * Build summary section HTML
+   */
+  buildSummarySection(data, type) {
+    let html = '<div class="summary-grid">';
+
+    // Start date
+    const startDate =
+      data.start ||
+      data.start_date ||
+      data.winter_start ||
+      data.season_start ||
+      data.first_frost_date ||
+      data.date;
+    if (startDate) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Alkupäivä</span>
+        <span class="summary-value">${this.formatShortDate(startDate)}</span>
+      </div>`;
+    }
+
+    // End date
+    const endDate =
+      data.end || data.end_date || data.winter_end || data.season_end;
+    if (endDate && endDate !== startDate) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Loppupäivä</span>
+        <span class="summary-value">${this.formatShortDate(endDate)}</span>
+      </div>`;
+    }
+
+    // Duration
+    const duration = data.duration || data.duration_days;
+    if (duration) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Kesto</span>
+        <span class="summary-value">${duration} päivää</span>
+      </div>`;
+    }
+
+    // Year
+    const year = data.year || data.winter;
+    if (year) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Vuosi</span>
+        <span class="summary-value">${year}</span>
+      </div>`;
+    }
+
+    // Temperature data
+    if (data.min_temp != null) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Min. lämpötila</span>
+        <span class="summary-value">${data.min_temp.toFixed(1)}°C</span>
+      </div>`;
+    }
+
+    if (data.max_temp != null) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Max. lämpötila</span>
+        <span class="summary-value">${data.max_temp.toFixed(1)}°C</span>
+      </div>`;
+    }
+
+    if (data.first_frost_temp != null) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Pakkaslämpötila</span>
+        <span class="summary-value">${data.first_frost_temp.toFixed(1)}°C</span>
+      </div>`;
+    }
+
+    if (data.frost_nights_total != null) {
+      html += `<div class="summary-item">
+        <span class="summary-label">Pakkasöitä</span>
+        <span class="summary-value">${data.frost_nights_total} yötä</span>
+      </div>`;
+    }
+
+    html += "</div>";
+    return html;
+  },
+
+  /**
+   * Format date to Finnish format with year (e.g. "12.7.2023")
+   */
+  formatShortDate(dateStr) {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+  },
+
+  /**
+   * Get anomaly type key for phenomenon config
+   */
+  getAnomalyTypeKey(type) {
+    const typeMap = {
+      "Äärimmäinen kylmyys": "extreme-cold",
+      "Ankara pakkasjakso": "cold-snap",
+      Hellejakso: "heat-wave",
+      Takatalvi: "return-winter",
+      "Äkillinen lämpeneminen": "temp-jump",
+    };
+    return typeMap[type] || type;
+  },
+
+  /**
+   * Map zone display name to zone key used in zone summary data
+   */
+  getZoneKey(zoneName) {
+    const zoneMap = {
+      "Etelä-Suomi": "etela_suomi",
+      "Keski-Suomi": "keski_suomi",
+      "Pohjois-Suomi": "pohjois_suomi",
+      Lappi: "lappi",
+    };
+    return zoneMap[zoneName] || zoneName;
+  },
+
+  /**
+   * Render temperature progression chart using D3
+   */
+  renderTemperatureChart(zone, startDate, endDate) {
+    const chartContainer = document.getElementById(
+      "years-phenomenon-temp-chart"
+    );
+    if (!chartContainer || typeof d3 === "undefined") return;
+
+    // Map zone name to zone key used in data
+    const zoneKey = this.getZoneKey(zone);
+
+    // Collect daily data for the period
+    const dailyData = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate || startDate);
+
+    // Extend range by a few days for context
+    start.setDate(start.getDate() - 2);
+    end.setDate(end.getDate() + 2);
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split("T")[0];
+      const zoneData = DataLoader.getZoneData(dateStr, zoneKey);
+
+      if (zoneData) {
+        dailyData.push({
+          date: new Date(dateStr),
+          temp_mean: zoneData.temp_mean,
+          temp_min: zoneData.temp_min,
+          temp_max: zoneData.temp_max,
+        });
+      }
+    }
+
+    if (dailyData.length === 0) {
+      chartContainer.innerHTML =
+        '<p class="no-data">Ei lämpötiladataa saatavilla</p>';
+      return;
+    }
+
+    // D3 chart rendering
+    const margin = { top: 10, right: 30, bottom: 30, left: 40 };
+    const width =
+      chartContainer.clientWidth - margin.left - margin.right || 280;
+    const height = 150 - margin.top - margin.bottom;
+
+    // Clear previous chart
+    d3.select(chartContainer).selectAll("*").remove();
+
+    const svg = d3
+      .select(chartContainer)
+      .append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    // Scales
+    const x = d3
+      .scaleTime()
+      .domain(d3.extent(dailyData, (d) => d.date))
+      .range([0, width]);
+
+    const y = d3
+      .scaleLinear()
+      .domain([
+        d3.min(dailyData, (d) => d.temp_min) - 2,
+        d3.max(dailyData, (d) => d.temp_max) + 2,
+      ])
+      .nice()
+      .range([height, 0]);
+
+    // Area between min and max
+    const area = d3
+      .area()
+      .x((d) => x(d.date))
+      .y0((d) => y(d.temp_min))
+      .y1((d) => y(d.temp_max));
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "rgba(52, 152, 219, 0.15)")
+      .attr("d", area);
+
+    // Lines
+    const lineMax = d3
+      .line()
+      .x((d) => x(d.date))
+      .y((d) => y(d.temp_max));
+
+    const lineMean = d3
+      .line()
+      .x((d) => x(d.date))
+      .y((d) => y(d.temp_mean));
+
+    const lineMin = d3
+      .line()
+      .x((d) => x(d.date))
+      .y((d) => y(d.temp_min));
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "none")
+      .attr("stroke", "#e74c3c")
+      .attr("stroke-width", 1.5)
+      .attr("d", lineMax);
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "none")
+      .attr("stroke", "#3498db")
+      .attr("stroke-width", 2)
+      .attr("d", lineMean);
+
+    svg
+      .append("path")
+      .datum(dailyData)
+      .attr("fill", "none")
+      .attr("stroke", "#2980b9")
+      .attr("stroke-width", 1.5)
+      .attr("d", lineMin);
+
+    // Zero line
+    if (y.domain()[0] < 0 && y.domain()[1] > 0) {
+      svg
+        .append("line")
+        .attr("x1", 0)
+        .attr("x2", width)
+        .attr("y1", y(0))
+        .attr("y2", y(0))
+        .attr("stroke", "#999")
+        .attr("stroke-dasharray", "3,3")
+        .attr("stroke-width", 1);
+    }
+
+    // Axes
+    svg
+      .append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(x).ticks(4).tickFormat(d3.timeFormat("%d.%m")))
+      .selectAll("text")
+      .style("font-size", "9px");
+
+    svg
+      .append("g")
+      .call(d3.axisLeft(y).ticks(5))
+      .selectAll("text")
+      .style("font-size", "9px");
+
+    // Legend
+    const legend = svg
+      .append("g")
+      .attr("transform", `translate(${width - 50}, 5)`);
+
+    legend
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", 15)
+      .attr("y1", 0)
+      .attr("y2", 0)
+      .attr("stroke", "#e74c3c")
+      .attr("stroke-width", 1.5);
+    legend
+      .append("text")
+      .attr("x", 18)
+      .attr("y", 4)
+      .attr("font-size", "8px")
+      .text("Max");
+
+    legend
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", 15)
+      .attr("y1", 12)
+      .attr("y2", 12)
+      .attr("stroke", "#3498db")
+      .attr("stroke-width", 2);
+    legend
+      .append("text")
+      .attr("x", 18)
+      .attr("y", 16)
+      .attr("font-size", "8px")
+      .text("Ka.");
+
+    legend
+      .append("line")
+      .attr("x1", 0)
+      .attr("x2", 15)
+      .attr("y1", 24)
+      .attr("y2", 24)
+      .attr("stroke", "#2980b9")
+      .attr("stroke-width", 1.5);
+    legend
+      .append("text")
+      .attr("x", 18)
+      .attr("y", 28)
+      .attr("font-size", "8px")
+      .text("Min");
+  },
+
 };
 
 // Export for use in other modules

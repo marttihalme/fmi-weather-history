@@ -33,6 +33,12 @@ const DataFetcher = {
       btnDeleteAll.addEventListener("click", () => this.handleDeleteAll());
     }
 
+    // Run analysis button
+    const btnRunAnalysis = document.getElementById("btn-run-analysis");
+    if (btnRunAnalysis) {
+      btnRunAnalysis.addEventListener("click", () => this.handleRunAnalysis());
+    }
+
     // Initialize date inputs with defaults
     this.initializeDateInputs();
 
@@ -81,7 +87,46 @@ const DataFetcher = {
       // Set values in Finnish format
       startInput.value = this.formatFinnishDate(startOfYear);
       endInput.value = this.formatFinnishDate(yesterday);
+
+      // Initialize calendar buttons
+      this.initializeCalendarButtons();
     }
+  },
+
+  /**
+   * Initialize calendar button functionality
+   */
+  initializeCalendarButtons() {
+    const calendarButtons = document.querySelectorAll(".calendar-btn");
+
+    calendarButtons.forEach((btn) => {
+      const targetId = btn.dataset.target;
+      const textInput = document.getElementById(targetId);
+      const datePicker = document.getElementById(`${targetId}-picker`);
+
+      if (textInput && datePicker) {
+        // When calendar button is clicked, open the date picker
+        btn.addEventListener("click", () => {
+          datePicker.showPicker();
+        });
+
+        // When date is selected from picker, update text input in Finnish format
+        datePicker.addEventListener("change", () => {
+          if (datePicker.value) {
+            const date = new Date(datePicker.value);
+            textInput.value = this.formatFinnishDate(date);
+          }
+        });
+
+        // Sync text input to date picker when text is entered manually
+        textInput.addEventListener("blur", () => {
+          const parsed = this.parseFinnishDate(textInput.value);
+          if (parsed) {
+            datePicker.value = parsed;
+          }
+        });
+      }
+    });
   },
 
   /**
@@ -256,6 +301,78 @@ const DataFetcher = {
     } finally {
       if (btn) btn.disabled = false;
     }
+  },
+
+  /**
+   * Handle run analysis button
+   */
+  async handleRunAnalysis() {
+    this.showOperationWithProgress("Käynnistetään analyysit...", 0);
+    this.addLog("Aloitetaan analyysien ajo", "info");
+
+    const btn = document.getElementById("btn-run-analysis");
+    if (btn) btn.disabled = true;
+
+    try {
+      await this.streamRunAnalysis();
+    } catch (error) {
+      this.showOperationError(`Virhe: ${error.message}`);
+      this.addLog(`Virhe: ${error.message}`, "error");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  },
+
+  /**
+   * Stream run analysis using Server-Sent Events
+   */
+  streamRunAnalysis() {
+    return new Promise((resolve, reject) => {
+      fetch(`${this.baseURL}/run-analysis`, {
+        method: "POST",
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.statusText}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+
+          const processStream = ({ done, value }) => {
+            if (done) {
+              resolve();
+              return;
+            }
+
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            let eventType = null;
+
+            for (const line of lines) {
+              if (line.startsWith("event: ")) {
+                eventType = line.slice(7).trim();
+              } else if (line.startsWith("data: ")) {
+                try {
+                  const eventData = JSON.parse(line.slice(6));
+                  this.handleSSEEvent(eventType, eventData);
+                } catch (e) {
+                  console.warn("Failed to parse SSE data:", line);
+                }
+              }
+            }
+
+            reader.read().then(processStream).catch(reject);
+          };
+
+          reader.read().then(processStream).catch(reject);
+        })
+        .catch(reject);
+    });
   },
 
   /**

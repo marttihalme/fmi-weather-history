@@ -589,8 +589,11 @@ const DataLoader = {
       });
     });
 
-    // Sort order for logical grouping
-    const sortOrder = [
+    // Zone order: South to North
+    const zoneOrder = ["Etelä-Suomi", "Keski-Suomi", "Pohjois-Suomi", "Lappi"];
+
+    // Type order for secondary grouping within each zone
+    const typeOrder = [
       "winter_start",
       "winter_end",
       "first_frost",
@@ -607,11 +610,14 @@ const DataLoader = {
     ];
 
     allPhenomena.sort((a, b) => {
-      const indexA = sortOrder.indexOf(a.type);
-      const indexB = sortOrder.indexOf(b.type);
-      if (indexA !== indexB) return indexA - indexB;
-      // Secondary sort by zone
-      return a.zone.localeCompare(b.zone);
+      // Primary sort by zone
+      const zoneIndexA = zoneOrder.indexOf(a.zone);
+      const zoneIndexB = zoneOrder.indexOf(b.zone);
+      if (zoneIndexA !== zoneIndexB) return zoneIndexA - zoneIndexB;
+      // Secondary sort by phenomenon type
+      const typeIndexA = typeOrder.indexOf(a.type);
+      const typeIndexB = typeOrder.indexOf(b.type);
+      return typeIndexA - typeIndexB;
     });
 
     return allPhenomena;

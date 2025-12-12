@@ -96,6 +96,20 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
+
+        elif self.path == '/api/run-analysis':
+            # Use SSE for progress streaming
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Connection', 'keep-alive')
+            self.end_headers()
+
+            try:
+                self.run_analysis_streaming()
+            except Exception as e:
+                self.send_sse_event('error', {'message': str(e)})
+
         else:
             self.send_error(404, "Not Found")
 
@@ -303,6 +317,87 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             'percent': 100
         })
         self.send_sse_event('complete', {'status': 'success', 'rows': total_rows})
+
+    def run_analysis_streaming(self):
+        """Run analysis scripts only (no data fetch)"""
+        self.send_sse_event('progress', {
+            'step': 'analyze',
+            'message': 'Käynnistetään analyysit...',
+            'percent': 5
+        })
+
+        preprocess_path = BASE_DIR / "preprocessing" / "prepare_data.py"
+        process = subprocess.Popen(
+            [sys.executable, '-u', str(preprocess_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+
+        while True:
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            if line:
+                line = line.strip()
+                print(line)
+
+                if "Running analysis" in line or "analyze_data.py" in line:
+                    self.send_sse_event('progress', {
+                        'step': 'analyze',
+                        'message': 'Ajetaan analyysejä...',
+                        'percent': 15
+                    })
+                elif "Loading weather data" in line or "Loaded" in line:
+                    self.send_sse_event('progress', {
+                        'step': 'preprocess',
+                        'message': 'Ladataan dataa...',
+                        'percent': 30
+                    })
+                elif "NOLLARAJA" in line or "first_frost" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'analyze',
+                        'message': 'Analysoidaan yöpakkasia...',
+                        'percent': 40
+                    })
+                elif "TERMISEN TALVEN" in line or "winter" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'analyze',
+                        'message': 'Analysoidaan talvikausia...',
+                        'percent': 55
+                    })
+                elif "LIUKKAUSRISKIN" in line or "slippery" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'analyze',
+                        'message': 'Analysoidaan liukkausriskiä...',
+                        'percent': 70
+                    })
+                elif "ANOMALIOIDEN" in line or "anomal" in line.lower():
+                    self.send_sse_event('progress', {
+                        'step': 'analyze',
+                        'message': 'Tunnistetaan sääanomalioita...',
+                        'percent': 85
+                    })
+                elif "VALMIIT" in line or "COMPLETE" in line:
+                    self.send_sse_event('progress', {
+                        'step': 'done',
+                        'message': 'Analyysit valmiit!',
+                        'percent': 99
+                    })
+
+        process.wait()
+
+        if process.returncode != 0:
+            self.send_sse_event('error', {'message': 'Analyysit epäonnistuivat'})
+            return
+
+        self.send_sse_event('progress', {
+            'step': 'done',
+            'message': 'Analyysit ja esikäsittely valmis!',
+            'percent': 100
+        })
+        self.send_sse_event('complete', {'status': 'success'})
 
     def delete_all_data(self):
         """Delete all weather data and analysis files"""

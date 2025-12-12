@@ -218,6 +218,19 @@ const MapManager = {
     // Remove existing Finland layer
     this.layers.border.selectAll('.finland-border').remove();
 
+    // Create clip path for Finland shape
+    let defs = this.svg.select('defs');
+    if (defs.empty()) {
+      defs = this.svg.insert('defs', ':first-child');
+    }
+    defs.selectAll('#finland-clip').remove();
+
+    defs.append('clipPath')
+      .attr('id', 'finland-clip')
+      .append('path')
+      .datum(this.finlandGeoJSON)
+      .attr('d', this.path);
+
     // Draw Finland border
     this.layers.border.append('path')
       .datum(this.finlandGeoJSON)
@@ -631,6 +644,90 @@ const MapManager = {
    */
   addInterpolationLayer(layer, name) {
     console.log('Interpolation layer added:', name);
+  },
+
+  // Zone latitude boundaries
+  ZONE_BOUNDARIES: {
+    'Etelä-Suomi': { latMin: 59.5, latMax: 61.5 },
+    'Keski-Suomi': { latMin: 61.5, latMax: 64.0 },
+    'Pohjois-Suomi': { latMin: 64.0, latMax: 66.0 },
+    'Lappi': { latMin: 66.0, latMax: 70.1 }
+  },
+
+  /**
+   * Highlight a climate zone on the map
+   * @param {string} zoneName - Zone name (e.g., "Etelä-Suomi")
+   */
+  highlightZone(zoneName) {
+    if (!this.projection || !this.g) return;
+
+    // Remove existing highlight
+    this.clearZoneHighlight();
+
+    const bounds = this.ZONE_BOUNDARIES[zoneName];
+    if (!bounds) return;
+
+    // Finland's approximate longitude bounds
+    const lonMin = 19.0;
+    const lonMax = 31.6;
+
+    // Create rectangle coordinates
+    const topLeft = this.projection([lonMin, bounds.latMax]);
+    const topRight = this.projection([lonMax, bounds.latMax]);
+    const bottomLeft = this.projection([lonMin, bounds.latMin]);
+    const bottomRight = this.projection([lonMax, bounds.latMin]);
+
+    if (!topLeft || !bottomRight) return;
+
+    // Create highlight layer if not exists - insert AFTER border layer so it appears on top
+    if (!this.layers.zoneHighlight) {
+      this.layers.zoneHighlight = this.g.append('g')
+        .attr('class', 'layer-zone-highlight');
+    }
+
+    // Draw highlight rectangle clipped to Finland shape
+    this.layers.zoneHighlight.append('rect')
+      .attr('class', 'zone-highlight')
+      .attr('x', topLeft[0])
+      .attr('y', topLeft[1])
+      .attr('width', topRight[0] - topLeft[0])
+      .attr('height', bottomLeft[1] - topLeft[1])
+      .attr('fill', 'rgba(255, 193, 7, 0.4)')
+      .attr('stroke', 'none')
+      .attr('clip-path', 'url(#finland-clip)')
+      .attr('pointer-events', 'none');
+
+    // Draw zone boundary lines (horizontal lines at lat boundaries)
+    const drawBoundaryLine = (lat) => {
+      const leftPoint = this.projection([lonMin, lat]);
+      const rightPoint = this.projection([lonMax, lat]);
+      if (leftPoint && rightPoint) {
+        this.layers.zoneHighlight.append('line')
+          .attr('class', 'zone-highlight')
+          .attr('x1', leftPoint[0])
+          .attr('y1', leftPoint[1])
+          .attr('x2', rightPoint[0])
+          .attr('y2', rightPoint[1])
+          .attr('stroke', 'rgba(255, 152, 0, 0.9)')
+          .attr('stroke-width', 2)
+          .attr('stroke-dasharray', '6,3')
+          .attr('clip-path', 'url(#finland-clip)')
+          .attr('pointer-events', 'none');
+      }
+    };
+
+    // Draw boundary lines at zone edges
+    drawBoundaryLine(bounds.latMin);
+    drawBoundaryLine(bounds.latMax);
+  },
+
+  /**
+   * Clear zone highlight from map
+   */
+  clearZoneHighlight() {
+    if (this.layers.zoneHighlight) {
+      this.layers.zoneHighlight.selectAll('.zone-highlight').remove();
+    }
   }
 };
 
