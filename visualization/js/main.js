@@ -38,9 +38,6 @@ const App = {
       // Initialize map (ID from index.html is 'map')
       MapManager.initializeMap("map");
 
-      // Initialize data table (ID from index.html is 'data-table')
-      DataTable.initialize("data-table");
-
       // Initialize Year Compare module
       if (typeof YearCompare !== "undefined") {
         YearCompare.initialize();
@@ -62,6 +59,10 @@ const App = {
 
       // Parse URL parameters for deep linking (must be after data load)
       TimelineController.parseURLParameters();
+
+      // Re-render current tab content now that data is loaded
+      // This handles the case where user navigated directly to a tab URL
+      this.renderCurrentTabContent();
 
       UIControls.hideLoading();
       UIControls.showInfo("Application loaded successfully");
@@ -291,11 +292,6 @@ const App = {
       }
     }
 
-    // Update data table if enabled
-    if (UIControls.isDataTableEnabled()) {
-      this.showDataTable(stationData);
-    }
-
     // Log stats
     const stats = HeatmapRenderer.getDataStatistics();
     if (stats) {
@@ -304,86 +300,7 @@ const App = {
   },
 
   /**
-   * Show data table with current data
-   */
-  showDataTable(stationData) {
-    const container = document.getElementById("data-table-container");
-    if (!container) return;
-
-    // Show container
-    container.classList.remove("hidden");
-
-    // Convert station data to table rows
-    const rows = [];
-    Object.values(stationData).forEach((station) => {
-      rows.push({
-        Station: station.name || station.station_name,
-        Zone: station.zone || "-",
-        "Temp Mean":
-          station.temp_mean !== null
-            ? station.temp_mean.toFixed(1) + "°C"
-            : "-",
-        "Temp Min":
-          station.temp_min !== null ? station.temp_min.toFixed(1) + "°C" : "-",
-        "Temp Max":
-          station.temp_max !== null ? station.temp_max.toFixed(1) + "°C" : "-",
-        "Snow Depth":
-          station.snow_depth !== null
-            ? station.snow_depth.toFixed(1) + "cm"
-            : "-",
-        Precipitation:
-          station.precipitation !== null
-            ? station.precipitation.toFixed(1) + "mm"
-            : "-",
-      });
-    });
-
-    // Create simple HTML table
-    const table = document.getElementById("data-table");
-    if (!table) return;
-
-    let html = '<table class="data-table-custom">';
-
-    // Header
-    html += "<thead><tr>";
-    const headers = [
-      "Station",
-      "Zone",
-      "Temp Mean",
-      "Temp Min",
-      "Temp Max",
-      "Snow Depth",
-      "Precipitation",
-    ];
-    headers.forEach((h) => {
-      html += `<th>${h}</th>`;
-    });
-    html += "</tr></thead>";
-
-    // Body
-    html += "<tbody>";
-    rows.forEach((row) => {
-      html += "<tr>";
-      headers.forEach((h) => {
-        html += `<td>${row[h]}</td>`;
-      });
-      html += "</tr>";
-    });
-    html += "</tbody></table>";
-
-    table.innerHTML = html;
-  },
-
-  /**
-   * Hide data table
-   */
-  hideDataTable() {
-    const container = document.getElementById("data-table-container");
-    if (container) {
-      container.classList.add("hidden");
-    }
-  },
-
+   * Update color legend for current metric
   /**
    * Update color legend for current metric
    */
@@ -505,6 +422,27 @@ const App = {
   },
 
   /**
+   * Render content for the currently active tab
+   * Called after data is loaded to ensure tab content displays correctly
+   */
+  renderCurrentTabContent() {
+    // Find the active tab
+    const activeTab = document.querySelector('.tab-content.active');
+    if (!activeTab) return;
+
+    const tabId = activeTab.id;
+    console.log('Re-rendering content for active tab:', tabId);
+
+    if (tabId === 'compare-years-tab' && typeof YearCompare !== 'undefined') {
+      YearCompare.render();
+    } else if (tabId === 'exploration-tab' && typeof TimelineController !== 'undefined') {
+      // Re-initialize timeline - it may have been skipped if tab wasn't visible
+      TimelineController.initializeAnomalyTimeline();
+    }
+    // data-management-tab content is handled by DataFetcher.initialize()
+  },
+
+  /**
    * Set up event listeners
    */
   setupEventListeners() {
@@ -537,15 +475,6 @@ const App = {
       // Re-render to show/hide stations
       if (this.currentData) {
         this.displayData(this.currentData);
-      }
-    });
-
-    // Data table toggle
-    UIControls.onDataTableToggle((enabled) => {
-      if (enabled && this.currentData) {
-        this.showDataTable(this.currentData);
-      } else {
-        this.hideDataTable();
       }
     });
 

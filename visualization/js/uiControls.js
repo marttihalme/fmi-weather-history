@@ -9,7 +9,6 @@ const UIControls = {
     onAnomalyTimelineToggle: null,
     onWinterToggle: null,
     onStationsToggle: null,
-    onDataTableToggle: null,
     onRefresh30Click: null,
   },
 
@@ -106,18 +105,6 @@ const UIControls = {
       });
     } else {
       console.warn("Stations checkbox not found");
-    }
-
-    const dataTableCheckbox = document.getElementById("toggle-table");
-    if (dataTableCheckbox) {
-      dataTableCheckbox.addEventListener("change", (e) => {
-        console.log("Table toggled:", e.target.checked);
-        if (this.callbacks.onDataTableToggle) {
-          this.callbacks.onDataTableToggle(e.target.checked);
-        }
-      });
-    } else {
-      console.warn("Table checkbox not found");
     }
   },
 
@@ -240,10 +227,17 @@ const UIControls = {
       }
     }
 
-    // Initialize tab-specific content
-    if (tabName === 'compare-years' && typeof YearCompare !== 'undefined') {
-      YearCompare.render();
+    // Initialize tab-specific content (only if data is loaded)
+    if (DataLoader.isReady()) {
+      if (tabName === 'compare-years' && typeof YearCompare !== 'undefined') {
+        YearCompare.render();
+      } else if (tabName === 'exploration' && typeof TimelineController !== 'undefined') {
+        // Re-initialize timeline when switching to explore tab
+        // Timeline may not have rendered if tab was hidden during initial load
+        TimelineController.initializeAnomalyTimeline();
+      }
     }
+    // If data not ready, render will be triggered by App after data loads
   },
 
   /**
@@ -262,15 +256,6 @@ const UIControls = {
   isWinterEnabled() {
     const winterCheckbox = document.getElementById("toggle-winter");
     return winterCheckbox ? winterCheckbox.checked : false;
-  },
-
-  /**
-   * Check if data table is enabled
-   * @returns {boolean}
-   */
-  isDataTableEnabled() {
-    const dataTableCheckbox = document.getElementById("toggle-table");
-    return dataTableCheckbox ? dataTableCheckbox.checked : false;
   },
 
   /**
@@ -303,14 +288,6 @@ const UIControls = {
    */
   onStationsToggle(callback) {
     this.callbacks.onStationsToggle = callback;
-  },
-
-  /**
-   * Register callback for data table toggle
-   * @param {Function} callback
-   */
-  onDataTableToggle(callback) {
-    this.callbacks.onDataTableToggle = callback;
   },
 
   /**
@@ -348,7 +325,6 @@ const UIControls = {
       "modeToggle",
       "anomalyCheckbox",
       "winterCheckbox",
-      "dataTableCheckbox",
       "dateSlider",
       "playButton",
     ];
