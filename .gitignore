@@ -47,8 +47,8 @@ venv.bak/
 .env.local
 
 # Data files (keep compressed versions, ignore large CSVs)
-*.csv
-!example_*.csv
+# Keep main data CSV in repo for CI
+!data/raw/weather_data_2022_2025_all.csv
 
 # Ignore uncompressed JSON in visualization/data (use .gz instead)
 visualization/data/*.json
