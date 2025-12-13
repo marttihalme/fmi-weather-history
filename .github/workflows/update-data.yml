@@ -37,22 +37,25 @@ jobs:
         run: |
           python scripts/refresh_recent_data.py
 
-      - name: Compress large JSON files
+      - name: Compress JSON files for web
         run: |
           cd visualization/data
+          echo "JSON files before compression:"
+          ls -lh *.json 2>/dev/null || echo "No JSON files found"
           for file in *.json; do
             if [ -f "$file" ]; then
-              gzip -9 -k -f "$file"
+              gzip -9 -f "$file"
               echo "Compressed $file -> $file.gz"
             fi
           done
+          echo "GZ files after compression:"
           ls -lh *.gz
 
       - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/ visualization/data/
+          git add -f visualization/data/*.gz
           git diff --staged --quiet || git commit -m "Update weather data $(date -u +%Y-%m-%d)"
           git push
 
