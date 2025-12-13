@@ -286,11 +286,31 @@ const DataLoader = {
   },
 
   /**
-   * Fetch and parse JSON file
+   * Fetch and parse JSON file (tries .gz version first)
    * @param {string} url - File URL
    * @returns {Promise<any>} Parsed JSON data
    */
   async fetchJSON(url) {
+    // Try gzipped version first for better performance
+    const gzUrl = url + '.gz';
+
+    try {
+      const response = await fetch(gzUrl);
+      if (response.ok) {
+        // Browser automatically decompresses gzip when Content-Encoding is set
+        // But for static hosting, we need to decompress manually
+        const blob = await response.blob();
+        const ds = new DecompressionStream('gzip');
+        const decompressed = blob.stream().pipeThrough(ds);
+        const text = await new Response(decompressed).text();
+        return JSON.parse(text);
+      }
+    } catch (e) {
+      // Gzip version not available or failed, fall back to regular JSON
+      console.debug(`Gzip not available for ${url}, using uncompressed`);
+    }
+
+    // Fall back to uncompressed JSON
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(

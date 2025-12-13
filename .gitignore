@@ -49,7 +49,11 @@ venv.bak/
 # Data files (keep compressed versions, ignore large CSVs)
 *.csv
 !example_*.csv
-visualization/data/**/*.json
+
+# Ignore uncompressed JSON in visualization/data (use .gz instead)
+visualization/data/*.json
+# But keep gzipped versions
+!visualization/data/*.json.gz
 
 # Logs
 *.log

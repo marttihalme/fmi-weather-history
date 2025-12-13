@@ -35,6 +35,25 @@ const UIControls = {
     this.attachTabNavigation();
     this.attachRefresh30Button();
     this.initializeRouter();
+    this.checkBackendAvailability();
+  },
+
+  /**
+   * Check if backend API is available, hide Data Management tab if not
+   */
+  async checkBackendAvailability() {
+    try {
+      const response = await fetch('/api/status', { method: 'HEAD' });
+      if (!response.ok) throw new Error('API not available');
+      // Backend available, keep Data Management tab visible
+    } catch (e) {
+      // No backend - hide Data Management tab (static hosting mode)
+      const dataManagementButton = document.querySelector('[data-tab="data-management"]');
+      if (dataManagementButton) {
+        dataManagementButton.style.display = 'none';
+      }
+      console.log('Static hosting mode: Data Management tab hidden');
+    }
   },
 
   /**
