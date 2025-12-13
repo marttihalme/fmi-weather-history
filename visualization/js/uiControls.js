@@ -12,14 +12,19 @@ const UIControls = {
     onRefresh30Click: null,
   },
 
-  // Route mapping: URL path -> tab name
+  // Base path for GitHub Pages (auto-detected)
+  basePath: '',
+
+  // Route mapping: URL path -> tab name (relative to basePath)
   routes: {
     '/explore': 'exploration',
     '/compare-years': 'compare-years',
     '/data-management': 'data-management',
+    '': 'exploration',
+    '/': 'exploration',
   },
 
-  // Reverse mapping: tab name -> URL path
+  // Reverse mapping: tab name -> URL path (relative to basePath)
   tabToRoute: {
     'exploration': '/explore',
     'compare-years': '/compare-years',
@@ -27,9 +32,24 @@ const UIControls = {
   },
 
   /**
+   * Detect base path from current URL (for GitHub Pages subdirectory hosting)
+   */
+  detectBasePath() {
+    const path = window.location.pathname;
+    // Check if we're on GitHub Pages with a repo subdirectory
+    // e.g., /fmi-weather-history/explore -> basePath = /fmi-weather-history
+    const match = path.match(/^(\/[^/]+)(?:\/|$)/);
+    if (match && match[1] !== '/explore' && match[1] !== '/compare-years' && match[1] !== '/data-management') {
+      this.basePath = match[1];
+    }
+    console.log('Detected base path:', this.basePath || '(root)');
+  },
+
+  /**
    * Initialize UI controls
    */
   initialize() {
+    this.detectBasePath();
     this.attachMetricSelector();
     this.attachCheckboxes();
     this.attachTabNavigation();
@@ -177,8 +197,12 @@ const UIControls = {
    * @returns {string} Tab name
    */
   getTabFromPath(path) {
-    // Handle paths with or without trailing slash
-    const cleanPath = path.replace(/\/$/, '') || '/explore';
+    // Remove base path prefix and trailing slash
+    let cleanPath = path;
+    if (this.basePath && cleanPath.startsWith(this.basePath)) {
+      cleanPath = cleanPath.slice(this.basePath.length);
+    }
+    cleanPath = cleanPath.replace(/\/$/, '') || '';
 
     // Check direct route match
     if (this.routes[cleanPath]) {
@@ -242,12 +266,18 @@ const UIControls = {
 
     // Update URL
     if (updateUrl) {
-      const newPath = this.tabToRoute[tabName] || '/explore';
+      const routePath = this.tabToRoute[tabName] || '/explore';
+      const newPath = this.basePath + routePath;
       const currentPath = window.location.pathname;
 
       if (currentPath !== newPath) {
+        // Get current route without base path for comparison
+        const currentRoute = this.basePath && currentPath.startsWith(this.basePath)
+          ? currentPath.slice(this.basePath.length)
+          : currentPath;
+
         // Use replaceState for initial load, pushState for navigation
-        if (currentPath === '/' || currentPath === '' || !this.routes[currentPath]) {
+        if (currentRoute === '/' || currentRoute === '' || !this.routes[currentRoute]) {
           history.replaceState({ tab: tabName }, '', newPath);
         } else {
           history.pushState({ tab: tabName }, '', newPath);
