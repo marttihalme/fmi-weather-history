@@ -60,6 +60,15 @@ jobs:
           echo "=== Total size ==="
           du -sh .
 
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/raw/weather_data_2022_2025_all.csv
+          git add -f visualization/data/*.gz
+          git diff --staged --quiet || git commit -m "Update weather data $(date -u +%Y-%m-%d)"
+          git push
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
