@@ -40,24 +40,25 @@ jobs:
       - name: Compress JSON files for web
         run: |
           cd visualization/data
-          echo "JSON files before compression:"
+          echo "=== JSON files before compression ==="
           ls -lh *.json 2>/dev/null || echo "No JSON files found"
+
+          # Remove old .gz files
+          rm -f *.gz
+
+          # Compress all JSON files
           for file in *.json; do
             if [ -f "$file" ]; then
-              gzip -9 -f "$file"
-              echo "Compressed $file -> $file.gz"
+              gzip -9 -k "$file"
+              echo "Compressed $file"
             fi
           done
-          echo "GZ files after compression:"
+
+          echo "=== GZ files after compression ==="
           ls -lh *.gz
 
-      - name: Commit updated data
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f visualization/data/*.gz
-          git diff --staged --quiet || git commit -m "Update weather data $(date -u +%Y-%m-%d)"
-          git push
+          echo "=== Total size ==="
+          du -sh .
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
