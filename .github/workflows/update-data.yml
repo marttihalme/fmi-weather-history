@@ -29,6 +29,10 @@ jobs:
         run: |
           pip install -r requirements.txt
 
+      - name: Create data directories
+        run: |
+          mkdir -p data/raw data/analysis
+
       - name: Fetch latest weather data
         run: |
           python scripts/refresh_recent_data.py
