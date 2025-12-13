@@ -157,6 +157,15 @@ const UIControls = {
       this.switchTab(tabName, false); // Don't push state on popstate
     });
 
+    // Check for SPA redirect from 404.html (GitHub Pages workaround)
+    const params = new URLSearchParams(window.location.search);
+    const redirectRoute = params.get('route');
+    if (redirectRoute) {
+      // Clean up URL and navigate to the route
+      const basePath = window.location.pathname.replace(/\/$/, '');
+      window.history.replaceState(null, '', basePath + redirectRoute);
+    }
+
     // Navigate to initial route based on URL
     const initialTab = this.getTabFromPath(window.location.pathname);
     this.switchTab(initialTab, true); // Replace state for initial load

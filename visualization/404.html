@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+  <script>
+    // SPA redirect for GitHub Pages
+    // Converts /explore, /compare-years etc. to /?route=/explore
+    const path = window.location.pathname;
+    const repo = '/fmi-weather-history';
+
+    // Remove repo prefix if present
+    let route = path.startsWith(repo) ? path.slice(repo.length) : path;
+
+    // Redirect to index with route as query param
+    if (route && route !== '/') {
+      window.location.replace(repo + '/?route=' + encodeURIComponent(route));
+    } else {
+      window.location.replace(repo + '/');
+    }
+  </script>
+</head>
+<body>
+  Redirecting...
+</body>
+</html>
