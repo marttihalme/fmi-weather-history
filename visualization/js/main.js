@@ -478,6 +478,12 @@ const App = {
       }
     });
 
+    // Render mode toggle (interpolated vs voronoi)
+    UIControls.onRenderModeChange((mode) => {
+      console.log("Render mode changed to:", mode);
+      HeatmapRenderer.switchMode(mode);
+    });
+
     // Refresh 30 days
     UIControls.onRefresh30Click(async () => {
       console.log("Refreshing last 30 days...");

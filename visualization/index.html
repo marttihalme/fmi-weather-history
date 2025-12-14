@@ -73,6 +73,7 @@
               Näytä asemat
             </label>
           </div>
+
         </div>
 
         <!-- Main Content Area -->
@@ -145,48 +146,48 @@
             <div class="anomaly-timeline-header">
               <h4>Aikajana</h4>
               <span class="anomaly-legend-inline">
-                <span class="legend-item"
-                  ><span class="cold-spell-icon"></span> Pakkasjakso</span
-                >
-                <span class="legend-item"
-                  ><span class="warm-spell-icon"></span> Lämpökatko</span
-                >
-                <span class="legend-item"
-                  ><span class="winter-start-icon"></span> Kauden alku</span
-                >
-                <span class="legend-item"
-                  ><span class="winter-end-icon"></span> Kauden loppu</span
-                >
-                <span class="legend-item"
-                  ><span class="slippery-start-icon"></span> Liukkauskausi
-                  alkaa</span
-                >
-                <span class="legend-item"
-                  ><span class="slippery-bar-icon"></span> Liukkausriski</span
-                >
-                <span class="legend-item"
+                <span class="legend-item" title="Ensimmäinen yöpakkanen syksyllä"
                   ><span class="frost-marker-icon"></span> Ensimmäinen
                   yöpakkanen</span
                 >
-                <span class="legend-item"
+                <span class="legend-item" title="Yölämpötila laskee alle 0°C"
                   ><span class="frost-bar-icon"></span> Nollaraja alittuu</span
                 >
-                <span class="legend-item"
-                  ><span class="anomaly-icon extreme-cold"></span> Äärimmäinen
-                  kylmyys</span
+                <span class="legend-item" title="Ensimmäinen päivä syksyllä, kun yölämpötila laskee alle 0°C ja päivälämpötila on 0-5°C"
+                  ><span class="slippery-start-icon"></span> Liukkauskausi
+                  alkaa</span
                 >
-                <span class="legend-item"
+                <span class="legend-item" title="Jakso, jolloin yöpakkanen ja päivällä sulamislämpötila luovat liukkautta (yö <0°C, päivä 0-5°C)"
+                  ><span class="slippery-bar-icon"></span> Liukkausriski</span
+                >
+                <span class="legend-item" title="Päivä, jolloin keskilämpötila laskee pysyvästi alle 0°C (5 pv liukuva keskiarvo)"
+                  ><span class="winter-start-icon"></span> Talvikausi alkaa</span
+                >
+                <span class="legend-item" title="Päivä, jolloin keskilämpötila nousee pysyvästi yli 0°C keväällä"
+                  ><span class="winter-end-icon"></span> Talvikausi loppuu</span
+                >
+                <span class="legend-item" title="Vähintään 3 peräkkäistä päivää, jolloin keskilämpötila alle -10°C"
+                  ><span class="cold-spell-icon"></span> Pakkasjakso</span
+                >
+                <span class="legend-item" title="Vähintään 3 peräkkäistä päivää, jolloin keskilämpötila ≤ -15°C"
                   ><span class="anomaly-icon cold-snap"></span> Ankara
                   pakkasjakso</span
                 >
-                <span class="legend-item"
-                  ><span class="anomaly-icon heat-wave"></span> Hellejakso</span
+                <span class="legend-item" title="Vuorokauden minimilämpötila ≤ -25°C"
+                  ><span class="anomaly-icon extreme-cold"></span> Äärimmäinen
+                  kylmyys</span
                 >
-                <span class="legend-item"
+                <span class="legend-item" title="Talvikauden aikana vähintään 2 päivää, jolloin keskilämpötila nousee yli 0°C"
+                  ><span class="warm-spell-icon"></span> Lämpökatko</span
+                >
+                <span class="legend-item" title="Kevään jälkeen uusi pakkasjakso, kun lämpötila on jo ollut pysyvästi plussan puolella"
                   ><span class="anomaly-icon return-winter"></span>
                   Takatalvi</span
                 >
-                <span class="legend-item"
+                <span class="legend-item" title="Vähintään 3 peräkkäistä päivää, jolloin maksimilämpötila yli +25°C"
+                  ><span class="anomaly-icon heat-wave"></span> Hellejakso</span
+                >
+                <span class="legend-item" title="Vuorokauden keskilämpötila muuttuu yli ±15°C edelliseen päivään verrattuna"
                   ><span class="anomaly-icon temp-jump"></span> Lämpöhyppy</span
                 >
               </span>
@@ -244,25 +245,12 @@
           <!-- Controls (legend) -->
           <div id="compare-controls">
             <span class="compare-legend-inline">
-              <span
-                class="legend-item"
-                title="Vähintään 3 peräkkäistä päivää, jolloin keskilämpötila alle -10°C"
-                ><span class="cold-spell-icon"></span> Pakkasjakso</span
+              <span class="legend-item" title="Ensimmäinen yöpakkanen syksyllä"
+                ><span class="frost-marker-icon"></span> Ensimmäinen
+                yöpakkanen</span
               >
-              <span
-                class="legend-item"
-                title="Talvikauden aikana vähintään 2 päivää, jolloin keskilämpötila nousee yli 0°C"
-                ><span class="warm-spell-icon"></span> Lämpökatko</span
-              >
-              <span
-                class="legend-item"
-                title="Päivä, jolloin keskilämpötila laskee pysyvästi alle 0°C (5 pv liukuva keskiarvo)"
-                ><span class="winter-start-icon"></span> Talven alku</span
-              >
-              <span
-                class="legend-item"
-                title="Päivä, jolloin keskilämpötila nousee pysyvästi yli 0°C keväällä"
-                ><span class="winter-end-icon"></span> Talven loppu</span
+              <span class="legend-item" title="Yölämpötila laskee alle 0°C"
+                ><span class="frost-bar-icon"></span> Nollaraja alittuu</span
               >
               <span
                 class="legend-item"
@@ -275,12 +263,26 @@
                 title="Jakso, jolloin yöpakkanen ja päivällä sulamislämpötila luovat liukkautta (yö <0°C, päivä 0-5°C)"
                 ><span class="slippery-bar-icon"></span> Liukkausriski</span
               >
-              <span class="legend-item" title="Ensimmäinen yöpakkanen syksyllä"
-                ><span class="frost-marker-icon"></span> Ensimmäinen
-                yöpakkanen</span
+              <span
+                class="legend-item"
+                title="Päivä, jolloin keskilämpötila laskee pysyvästi alle 0°C (5 pv liukuva keskiarvo)"
+                ><span class="winter-start-icon"></span> Talvikausi alkaa</span
               >
-              <span class="legend-item" title="Yölämpötila laskee alle 0°C"
-                ><span class="frost-bar-icon"></span> Nollaraja alittuu</span
+              <span
+                class="legend-item"
+                title="Päivä, jolloin keskilämpötila nousee pysyvästi yli 0°C keväällä"
+                ><span class="winter-end-icon"></span> Talvikausi loppuu</span
+              >
+              <span
+                class="legend-item"
+                title="Vähintään 3 peräkkäistä päivää, jolloin keskilämpötila alle -10°C"
+                ><span class="cold-spell-icon"></span> Pakkasjakso</span
+              >
+              <span
+                class="legend-item"
+                title="Vähintään 3 peräkkäistä päivää, jolloin keskilämpötila ≤ -15°C"
+                ><span class="anomaly-icon cold-snap"></span> Ankara
+                pakkasjakso</span
               >
               <span
                 class="legend-item"
@@ -290,20 +292,19 @@
               >
               <span
                 class="legend-item"
-                title="Vähintään 3 peräkkäistä päivää, jolloin maksimilämpötila alle -15°C"
-                ><span class="anomaly-icon cold-snap"></span> Ankara
-                pakkasjakso</span
-              >
-              <span
-                class="legend-item"
-                title="Vähintään 3 peräkkäistä päivää, jolloin maksimilämpötila yli +25°C"
-                ><span class="anomaly-icon heat-wave"></span> Hellejakso</span
+                title="Talvikauden aikana vähintään 2 päivää, jolloin keskilämpötila nousee yli 0°C"
+                ><span class="warm-spell-icon"></span> Lämpökatko</span
               >
               <span
                 class="legend-item"
                 title="Kevään jälkeen uusi pakkasjakso, kun lämpötila on jo ollut pysyvästi plussan puolella"
                 ><span class="anomaly-icon return-winter"></span>
                 Takatalvi</span
+              >
+              <span
+                class="legend-item"
+                title="Vähintään 3 peräkkäistä päivää, jolloin maksimilämpötila yli +25°C"
+                ><span class="anomaly-icon heat-wave"></span> Hellejakso</span
               >
               <span
                 class="legend-item"

@@ -4,7 +4,7 @@
  */
 
 const HeatmapRenderer = {
-  currentMode: 'interpolated', // Always use interpolated mode
+  currentMode: 'contour', // Use contour mode by default
   currentData: null,
   colorScale: null,
   metric: 'temperature',
@@ -126,21 +126,17 @@ const HeatmapRenderer = {
       return;
     }
 
-    // Create interpolation circles for smooth heatmap effect
+    // Create interpolation circles with radial gradient for smooth heatmap effect
     const circles = [];
 
-    // Multiple passes for smooth blending
-    [80, 56, 32].forEach((radius, passIndex) => {
-      const opacity = 0.15 + passIndex * 0.05;
-
-      stations.forEach(station => {
-        circles.push({
-          lat: station.lat,
-          lon: station.lon,
-          radius: radius,
-          color: colorScale.getColor(station.value),
-          opacity: opacity
-        });
+    // Single circle per station - radial gradient handles smooth fading
+    stations.forEach(station => {
+      circles.push({
+        lat: station.lat,
+        lon: station.lon,
+        radius: 70,
+        color: colorScale.getColor(station.value),
+        opacity: 0.6
       });
     });
 
@@ -200,25 +196,17 @@ const HeatmapRenderer = {
       return;
     }
 
-    // Calculate average snow depth and dominant color
-    const avgSnow = snowStations.reduce((sum, s) => sum + s.value, 0) / snowStations.length;
-    const snowColor = colorScale.getColor(avgSnow);
-
-    // Create interpolation circles for snow coverage
+    // Create interpolation circles with radial gradient for snow coverage
     const circles = [];
 
-    // Multiple passes for smooth blending
-    [90, 63, 36].forEach((radius, passIndex) => {
-      const opacity = 0.15 + passIndex * 0.1;
-
-      snowStations.forEach(station => {
-        circles.push({
-          lat: station.lat,
-          lon: station.lon,
-          radius: radius,
-          color: snowColor,
-          opacity: opacity
-        });
+    // Single circle per station - radial gradient handles smooth fading
+    snowStations.forEach(station => {
+      circles.push({
+        lat: station.lat,
+        lon: station.lon,
+        radius: 80,
+        color: colorScale.getColor(station.value),
+        opacity: 0.65
       });
     });
 
@@ -228,19 +216,301 @@ const HeatmapRenderer = {
   },
 
   /**
+   * Render data as Voronoi cells (sharp boundaries between stations)
+   * @param {Object} data - Station data
+   * @param {string} metric - Metric to visualize
+   * @param {Object} colorScale - Color scale object
+   * @returns {void}
+   */
+  renderVoronoiMode(data, metric, colorScale) {
+    if (!MapManager.svg) {
+      console.error('Map not initialized');
+      return;
+    }
+
+    console.log('Voronoi mode - rendering sharp boundary cells');
+
+    this.currentMode = 'voronoi';
+    this.currentData = data;
+    this.metric = metric;
+    this.colorScale = colorScale;
+
+    MapManager.clearMarkers();
+
+    const stations = [];
+
+    // Prepare stations with valid values
+    Object.keys(data).forEach(stationId => {
+      const station = data[stationId];
+      const value = station[metric];
+
+      // Skip null/undefined/NaN values
+      if (value === undefined || value === null || isNaN(value)) {
+        return;
+      }
+
+      // For snow depth, only include stations with actual snow
+      if (metric === 'snow_depth' && value < 0.5) {
+        return;
+      }
+
+      stations.push({
+        id: stationId,
+        name: station.station_name || station.name,
+        lat: station.lat,
+        lon: station.lon,
+        value: value,
+        color: colorScale.getColor(value)
+      });
+    });
+
+    if (stations.length === 0) {
+      console.warn('No valid data for Voronoi mode');
+      return;
+    }
+
+    MapManager.addVoronoiCells(stations);
+
+    console.log(`Rendered ${stations.length} Voronoi cells`);
+  },
+
+  /**
+   * Render data as hexagonal grid
+   * @param {Object} data - Station data
+   * @param {string} metric - Metric to visualize
+   * @param {Object} colorScale - Color scale object
+   * @returns {void}
+   */
+  renderHexagonMode(data, metric, colorScale) {
+    if (!MapManager.svg) {
+      console.error('Map not initialized');
+      return;
+    }
+
+    console.log('Hexagon mode - rendering hexagonal grid');
+
+    this.currentMode = 'hexagon';
+    this.currentData = data;
+    this.metric = metric;
+    this.colorScale = colorScale;
+
+    MapManager.clearMarkers();
+
+    const stations = [];
+
+    // Prepare stations with valid values
+    Object.keys(data).forEach(stationId => {
+      const station = data[stationId];
+      const value = station[metric];
+
+      if (value === undefined || value === null || isNaN(value)) {
+        return;
+      }
+
+      if (metric === 'snow_depth' && value < 0.5) {
+        return;
+      }
+
+      stations.push({
+        id: stationId,
+        name: station.station_name || station.name,
+        lat: station.lat,
+        lon: station.lon,
+        value: value,
+        color: colorScale.getColor(value)
+      });
+    });
+
+    if (stations.length === 0) {
+      console.warn('No valid data for Hexagon mode');
+      return;
+    }
+
+    MapManager.addHexagonGrid(stations, 20);
+
+    console.log(`Rendered hexagon grid from ${stations.length} stations`);
+  },
+
+  /**
+   * Render data as contour lines (isobar-style)
+   * @param {Object} data - Station data
+   * @param {string} metric - Metric to visualize
+   * @param {Object} colorScale - Color scale object
+   * @returns {void}
+   */
+  renderContourMode(data, metric, colorScale) {
+    if (!MapManager.svg) {
+      console.error('Map not initialized');
+      return;
+    }
+
+    console.log('Contour mode - rendering isobar-style visualization');
+
+    this.currentMode = 'contour';
+    this.currentData = data;
+    this.metric = metric;
+    this.colorScale = colorScale;
+
+    MapManager.clearMarkers();
+
+    const stations = [];
+
+    // Prepare stations with valid values
+    Object.keys(data).forEach(stationId => {
+      const station = data[stationId];
+      const value = station[metric];
+
+      if (value === undefined || value === null || isNaN(value)) {
+        return;
+      }
+
+      if (metric === 'snow_depth' && value < 0.5) {
+        return;
+      }
+
+      stations.push({
+        id: stationId,
+        name: station.station_name || station.name,
+        lat: station.lat,
+        lon: station.lon,
+        value: value
+      });
+    });
+
+    if (stations.length === 0) {
+      console.warn('No valid data for Contour mode');
+      return;
+    }
+
+    // Generate thresholds based on metric
+    const thresholds = this._getContourThresholds(metric, stations);
+
+    MapManager.addContourLines(stations, colorScale, thresholds);
+
+    console.log(`Rendered contour lines from ${stations.length} stations`);
+  },
+
+  /**
+   * Render data as rasterized IDW heatmap (canvas-based, smooth gradient)
+   * @param {Object} data - Station data
+   * @param {string} metric - Metric to visualize
+   * @param {Object} colorScale - Color scale object
+   * @returns {void}
+   */
+  renderRasterMode(data, metric, colorScale) {
+    if (!MapManager.svg) {
+      console.error('Map not initialized');
+      return;
+    }
+
+    console.log('Raster mode - rendering pixel-level IDW heatmap');
+
+    this.currentMode = 'raster';
+    this.currentData = data;
+    this.metric = metric;
+    this.colorScale = colorScale;
+
+    MapManager.clearMarkers();
+
+    const stations = [];
+
+    // Prepare stations with valid values
+    Object.keys(data).forEach(stationId => {
+      const station = data[stationId];
+      const value = station[metric];
+
+      if (value === undefined || value === null || isNaN(value)) {
+        return;
+      }
+
+      if (metric === 'snow_depth' && value < 0.5) {
+        return;
+      }
+
+      stations.push({
+        id: stationId,
+        name: station.station_name || station.name,
+        lat: station.lat,
+        lon: station.lon,
+        value: value
+      });
+    });
+
+    if (stations.length === 0) {
+      console.warn('No valid data for Raster mode');
+      return;
+    }
+
+    MapManager.addRasterHeatmap(stations, colorScale, 150);
+
+    console.log(`Rendered raster heatmap from ${stations.length} stations`);
+  },
+
+  /**
+   * Get contour thresholds for a metric
+   * @private
+   */
+  _getContourThresholds(metric, stations) {
+    const values = stations.map(s => s.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    // Metric-specific thresholds
+    const metricThresholds = {
+      temp_mean: [-30, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30],
+      temp_min: [-40, -30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20],
+      temp_max: [-20, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35],
+      snow_depth: [1, 5, 10, 20, 30, 50, 70, 100],
+      precipitation: [0, 1, 2, 5, 10, 15, 20, 30, 40]
+    };
+
+    const predefined = metricThresholds[metric];
+    if (predefined) {
+      // Filter to only include thresholds within data range (with some margin)
+      return predefined.filter(t => t >= min - 5 && t <= max + 5);
+    }
+
+    // Generate automatic thresholds
+    const step = (max - min) / 10;
+    const thresholds = [];
+    for (let v = min; v <= max; v += step) {
+      thresholds.push(Math.round(v));
+    }
+    return thresholds;
+  },
+
+  /**
    * Switch rendering mode
-   * @param {string} mode - 'stations' or 'interpolated'
+   * @param {string} mode - 'stations', 'interpolated', 'voronoi', 'hexagon', 'contour', or 'raster'
    */
   switchMode(mode) {
-    if (mode === 'stations' || mode === 'interpolated') {
+    const validModes = ['stations', 'interpolated', 'voronoi', 'hexagon', 'contour', 'raster'];
+    if (validModes.includes(mode)) {
+      this.currentMode = mode;
       const data = this.currentData;
       const metric = this.metric;
       const colorScale = this.colorScale;
 
-      if (mode === 'stations') {
-        this.renderStationMode(data, metric, colorScale);
-      } else {
-        this.renderInterpolatedMode(data, metric, colorScale);
+      if (!data || !colorScale) return;
+
+      switch (mode) {
+        case 'stations':
+          this.renderStationMode(data, metric, colorScale);
+          break;
+        case 'voronoi':
+          this.renderVoronoiMode(data, metric, colorScale);
+          break;
+        case 'hexagon':
+          this.renderHexagonMode(data, metric, colorScale);
+          break;
+        case 'contour':
+          this.renderContourMode(data, metric, colorScale);
+          break;
+        case 'raster':
+          this.renderRasterMode(data, metric, colorScale);
+          break;
+        default:
+          this.renderInterpolatedMode(data, metric, colorScale);
       }
     }
   },
@@ -256,10 +526,24 @@ const HeatmapRenderer = {
     this.metric = metric;
     this.colorScale = colorScale;
 
-    if (this.currentMode === 'stations') {
-      this.renderStationMode(data, metric, colorScale);
-    } else {
-      this.renderInterpolatedMode(data, metric, colorScale);
+    switch (this.currentMode) {
+      case 'stations':
+        this.renderStationMode(data, metric, colorScale);
+        break;
+      case 'voronoi':
+        this.renderVoronoiMode(data, metric, colorScale);
+        break;
+      case 'hexagon':
+        this.renderHexagonMode(data, metric, colorScale);
+        break;
+      case 'contour':
+        this.renderContourMode(data, metric, colorScale);
+        break;
+      case 'raster':
+        this.renderRasterMode(data, metric, colorScale);
+        break;
+      default:
+        this.renderInterpolatedMode(data, metric, colorScale);
     }
   },
 

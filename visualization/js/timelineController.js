@@ -1488,6 +1488,58 @@ const TimelineController = {
   },
 
   /**
+   * Position tooltip intelligently (avoid viewport edges)
+   * @param {HTMLElement} tooltip - The tooltip element
+   * @param {number} x - Mouse X position
+   * @param {number} y - Mouse Y position
+   */
+  positionTooltip(tooltip, x, y) {
+    // First set display to block so we can measure dimensions
+    tooltip.style.display = "block";
+
+    // Get tooltip dimensions
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const tooltipWidth = tooltipRect.width;
+    const tooltipHeight = tooltipRect.height;
+
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Default offset from cursor
+    const offset = 15;
+
+    // Calculate positions
+    let left = x + offset;
+    let top = y + offset;
+
+    // Check if tooltip would go off the right edge
+    if (left + tooltipWidth > viewportWidth - 10) {
+      // Position to the left of cursor instead
+      left = x - tooltipWidth - offset;
+    }
+
+    // Check if tooltip would go off the bottom edge
+    if (top + tooltipHeight > viewportHeight - 10) {
+      // Position above cursor instead
+      top = y - tooltipHeight - offset;
+    }
+
+    // Make sure tooltip doesn't go off left edge
+    if (left < 10) {
+      left = 10;
+    }
+
+    // Make sure tooltip doesn't go off top edge
+    if (top < 10) {
+      top = 10;
+    }
+
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  },
+
+  /**
    * Show tooltip with active anomalies
    * @param {number} x - Mouse X position
    * @param {number} y - Mouse Y position
@@ -1577,10 +1629,8 @@ const TimelineController = {
 
     tooltip.innerHTML = html;
 
-    // Position tooltip (offset from cursor)
-    tooltip.style.left = x + 15 + "px";
-    tooltip.style.top = y + 15 + "px";
-    tooltip.style.display = "block";
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, x, y);
   },
 
   /**
@@ -1626,9 +1676,9 @@ const TimelineController = {
     </div>`;
 
     tooltip.innerHTML = html;
-    tooltip.style.left = x + 15 + "px";
-    tooltip.style.top = y + 15 + "px";
-    tooltip.style.display = "block";
+
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, x, y);
   },
 
   /**
@@ -1666,9 +1716,9 @@ const TimelineController = {
     </div>`;
 
     tooltip.innerHTML = html;
-    tooltip.style.left = x + 15 + "px";
-    tooltip.style.top = y + 15 + "px";
-    tooltip.style.display = "block";
+
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, x, y);
   },
 
   /**
@@ -1726,9 +1776,9 @@ const TimelineController = {
     </div>`;
 
     tooltip.innerHTML = html;
-    tooltip.style.left = x + 15 + "px";
-    tooltip.style.top = y + 15 + "px";
-    tooltip.style.display = "block";
+
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, x, y);
   },
 
   /**
@@ -1778,9 +1828,9 @@ const TimelineController = {
     </div>`;
 
     tooltip.innerHTML = html;
-    tooltip.style.left = x + 15 + "px";
-    tooltip.style.top = y + 15 + "px";
-    tooltip.style.display = "block";
+
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, x, y);
   },
 
   /**
@@ -1853,9 +1903,9 @@ const TimelineController = {
     }
 
     tooltip.innerHTML = html;
-    tooltip.style.left = x + 15 + "px";
-    tooltip.style.top = y + 15 + "px";
-    tooltip.style.display = "block";
+
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, x, y);
   },
 
   /**

@@ -10,6 +10,7 @@ const UIControls = {
     onWinterToggle: null,
     onStationsToggle: null,
     onRefresh30Click: null,
+    onRenderModeChange: null,
   },
 
   // Base path for GitHub Pages (auto-detected)
@@ -51,6 +52,7 @@ const UIControls = {
   initialize() {
     this.detectBasePath();
     this.attachMetricSelector();
+    this.attachRenderModeSelector();
     this.attachCheckboxes();
     this.attachTabNavigation();
     this.attachRefresh30Button();
@@ -91,6 +93,24 @@ const UIControls = {
       });
     } else {
       console.warn("Metric selector not found");
+    }
+  },
+
+  /**
+   * Attach render mode selector event handler
+   */
+  attachRenderModeSelector() {
+    const renderModeSelect = document.getElementById("render-mode-selector");
+    if (renderModeSelect) {
+      renderModeSelect.addEventListener("change", (e) => {
+        const mode = e.target.value;
+        console.log("Render mode changed to:", mode);
+        if (this.callbacks.onRenderModeChange) {
+          this.callbacks.onRenderModeChange(mode);
+        }
+      });
+    } else {
+      console.warn("Render mode selector not found");
     }
   },
 
@@ -346,6 +366,14 @@ const UIControls = {
    */
   onStationsToggle(callback) {
     this.callbacks.onStationsToggle = callback;
+  },
+
+  /**
+   * Register callback for render mode change
+   * @param {Function} callback
+   */
+  onRenderModeChange(callback) {
+    this.callbacks.onRenderModeChange = callback;
   },
 
   /**

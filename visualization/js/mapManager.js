@@ -547,26 +547,60 @@ const MapManager = {
   },
 
   /**
-   * Add interpolation circles (for smooth heatmap effect)
+   * Add interpolation circles with radial gradient (for smooth heatmap effect)
    * @param {Array} circles - Array of {lat, lon, radius, color, opacity}
    */
   addInterpolationCircles(circles) {
     if (!this.layers.heatmap || !this.projection) return;
 
-    circles.forEach(circle => {
+    // Ensure defs exists for gradients
+    let defs = this.svg.select('defs');
+    if (defs.empty()) {
+      defs = this.svg.insert('defs', ':first-child');
+    }
+
+    circles.forEach((circle, index) => {
       const [x, y] = this.latLonToPixel(circle.lat, circle.lon);
 
       // Convert km radius to pixels (approximate)
       const scale = this.getScaleFactor();
       const pixelRadius = circle.radius * scale;
 
+      // Create unique gradient ID for this circle
+      const gradientId = `interpolation-gradient-${index}`;
+
+      // Remove existing gradient with same ID
+      defs.select(`#${gradientId}`).remove();
+
+      // Create radial gradient that fades from center color to transparent
+      const gradient = defs.append('radialGradient')
+        .attr('id', gradientId)
+        .attr('cx', '50%')
+        .attr('cy', '50%')
+        .attr('r', '50%');
+
+      // Gradient stops: solid color in center, fading to transparent at edges
+      gradient.append('stop')
+        .attr('offset', '0%')
+        .attr('stop-color', circle.color)
+        .attr('stop-opacity', circle.opacity || 0.5);
+
+      gradient.append('stop')
+        .attr('offset', '60%')
+        .attr('stop-color', circle.color)
+        .attr('stop-opacity', (circle.opacity || 0.5) * 0.5);
+
+      gradient.append('stop')
+        .attr('offset', '100%')
+        .attr('stop-color', circle.color)
+        .attr('stop-opacity', 0);
+
       this.layers.heatmap.append('circle')
         .attr('class', 'interpolation-circle')
         .attr('cx', x)
         .attr('cy', y)
         .attr('r', pixelRadius)
-        .attr('fill', circle.color)
-        .attr('fill-opacity', circle.opacity || 0.3)
+        .attr('fill', `url(#${gradientId})`)
         .attr('stroke', 'none');
     });
   },
@@ -585,6 +619,449 @@ const MapManager = {
     // 1 degree longitude at 64°N ≈ 49 km
     const pixelsPerDegree = Math.abs(p2[0] - p1[0]);
     return pixelsPerDegree / 49;
+  },
+
+  /**
+   * Add Voronoi cells for stations, clipped to Finland borders
+   * @param {Array} stations - Array of {lat, lon, color, value}
+   */
+  addVoronoiCells(stations) {
+    if (!this.layers.heatmap || !this.projection || !this.finlandGeoJSON) return;
+
+    // Clear existing heatmap elements
+    this.layers.heatmap.selectAll('*').remove();
+
+    if (stations.length === 0) return;
+
+    // Convert stations to pixel coordinates
+    const points = stations.map(station => {
+      const [x, y] = this.latLonToPixel(station.lat, station.lon);
+      return { x, y, color: station.color, value: station.value, station };
+    });
+
+    // Create Delaunay triangulation and Voronoi diagram
+    const delaunay = d3.Delaunay.from(points, d => d.x, d => d.y);
+
+    // Use large bounds to ensure all cells extend beyond Finland
+    const voronoi = delaunay.voronoi([-500, -500, this.width + 500, this.height + 500]);
+
+    // Create a group for Voronoi cells, clipped to Finland shape
+    const voronoiGroup = this.layers.heatmap.append('g')
+      .attr('class', 'voronoi-cells')
+      .attr('clip-path', 'url(#finland-clip)');
+
+    // Draw each Voronoi cell
+    points.forEach((point, i) => {
+      const cell = voronoi.cellPolygon(i);
+      if (!cell) return;
+
+      // Convert cell polygon to path string
+      const pathData = 'M' + cell.map(p => p.join(',')).join('L') + 'Z';
+
+      voronoiGroup.append('path')
+        .attr('class', 'voronoi-cell')
+        .attr('d', pathData)
+        .attr('fill', point.color)
+        .attr('fill-opacity', 0.85)
+        .attr('stroke', 'none')
+        .datum(point.station);
+    });
+
+    console.log(`Rendered ${points.length} Voronoi cells`);
+  },
+
+  /**
+   * Add hexagonal grid visualization
+   * @param {Array} stations - Array of {lat, lon, color, value}
+   * @param {number} hexRadius - Radius of hexagons in pixels (default 25)
+   */
+  addHexagonGrid(stations, hexRadius = 25) {
+    if (!this.layers.heatmap || !this.projection || !this.finlandGeoJSON) return;
+
+    // Clear existing heatmap elements
+    this.layers.heatmap.selectAll('*').remove();
+
+    if (stations.length === 0) return;
+
+    // Convert stations to pixel coordinates with values
+    const points = stations.map(station => {
+      const [x, y] = this.latLonToPixel(station.lat, station.lon);
+      return { x, y, color: station.color, value: station.value };
+    });
+
+    // Create hexagonal grid covering Finland bounds
+    const hexHeight = hexRadius * 2;
+    const hexWidth = Math.sqrt(3) * hexRadius;
+    const vertSpacing = hexHeight * 0.75;
+
+    // Get projected bounds of Finland
+    const topLeft = this.latLonToPixel(this.FINLAND_BOUNDS.north, this.FINLAND_BOUNDS.west);
+    const bottomRight = this.latLonToPixel(this.FINLAND_BOUNDS.south, this.FINLAND_BOUNDS.east);
+
+    const minX = Math.min(topLeft[0], bottomRight[0]) - hexWidth;
+    const maxX = Math.max(topLeft[0], bottomRight[0]) + hexWidth;
+    const minY = Math.min(topLeft[1], bottomRight[1]) - hexHeight;
+    const maxY = Math.max(topLeft[1], bottomRight[1]) + hexHeight;
+
+    // Create hexagon path generator
+    const hexagonPath = (cx, cy, r) => {
+      const angles = [0, 60, 120, 180, 240, 300].map(a => a * Math.PI / 180);
+      const pts = angles.map(a => [cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+      return 'M' + pts.map(p => p.join(',')).join('L') + 'Z';
+    };
+
+    // Create a group for hexagons, clipped to Finland shape
+    const hexGroup = this.layers.heatmap.append('g')
+      .attr('class', 'hexagon-grid')
+      .attr('clip-path', 'url(#finland-clip)');
+
+    // Generate hexagons and interpolate values
+    let row = 0;
+    for (let y = minY; y <= maxY; y += vertSpacing) {
+      const xOffset = (row % 2) * (hexWidth / 2);
+      for (let x = minX + xOffset; x <= maxX; x += hexWidth) {
+        // Find nearest stations and interpolate color using IDW
+        const interpolatedColor = this._interpolateColorIDW(x, y, points, 2);
+        if (!interpolatedColor) continue;
+
+        hexGroup.append('path')
+          .attr('class', 'hex-cell')
+          .attr('d', hexagonPath(x, y, hexRadius))
+          .attr('fill', interpolatedColor)
+          .attr('fill-opacity', 0.85)
+          .attr('stroke', 'rgba(255,255,255,0.1)')
+          .attr('stroke-width', 0.5);
+      }
+      row++;
+    }
+
+    console.log(`Rendered hexagonal grid`);
+  },
+
+  /**
+   * Interpolate color at a point using Inverse Distance Weighting
+   * @private
+   */
+  _interpolateColorIDW(x, y, points, power = 2) {
+    if (points.length === 0) return null;
+
+    let totalWeight = 0;
+    let weightedR = 0, weightedG = 0, weightedB = 0;
+    const epsilon = 0.0001;
+
+    points.forEach(point => {
+      const dist = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
+      const weight = 1 / Math.pow(dist + epsilon, power);
+
+      // Parse color
+      const rgb = this._parseColor(point.color);
+      if (rgb) {
+        weightedR += rgb.r * weight;
+        weightedG += rgb.g * weight;
+        weightedB += rgb.b * weight;
+        totalWeight += weight;
+      }
+    });
+
+    if (totalWeight === 0) return null;
+
+    const r = Math.round(weightedR / totalWeight);
+    const g = Math.round(weightedG / totalWeight);
+    const b = Math.round(weightedB / totalWeight);
+
+    return `rgb(${r},${g},${b})`;
+  },
+
+  /**
+   * Parse color string to RGB object
+   * @private
+   */
+  _parseColor(color) {
+    if (!color) return null;
+
+    // Handle rgb() format
+    const rgbMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (rgbMatch) {
+      return { r: parseInt(rgbMatch[1]), g: parseInt(rgbMatch[2]), b: parseInt(rgbMatch[3]) };
+    }
+
+    // Handle hex format
+    const hexMatch = color.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    if (hexMatch) {
+      return { r: parseInt(hexMatch[1], 16), g: parseInt(hexMatch[2], 16), b: parseInt(hexMatch[3], 16) };
+    }
+
+    return null;
+  },
+
+  /**
+   * Add contour lines visualization (isobar-style)
+   * @param {Array} stations - Array of {lat, lon, value}
+   * @param {Function} colorScale - Function to get color for value
+   * @param {Array} thresholds - Array of contour threshold values
+   */
+  addContourLines(stations, colorScale, thresholds) {
+    if (!this.layers.heatmap || !this.projection || !this.finlandGeoJSON) return;
+
+    // Clear existing heatmap elements
+    this.layers.heatmap.selectAll('*').remove();
+
+    if (stations.length === 0) return;
+
+    // Create a grid of interpolated values
+    const gridSize = 60; // Balanced resolution for quality and performance (3600 points)
+    const topLeft = this.latLonToPixel(this.FINLAND_BOUNDS.north, this.FINLAND_BOUNDS.west);
+    const bottomRight = this.latLonToPixel(this.FINLAND_BOUNDS.south, this.FINLAND_BOUNDS.east);
+
+    const minX = Math.min(topLeft[0], bottomRight[0]);
+    const maxX = Math.max(topLeft[0], bottomRight[0]);
+    const minY = Math.min(topLeft[1], bottomRight[1]);
+    const maxY = Math.max(topLeft[1], bottomRight[1]);
+
+    const stepX = (maxX - minX) / gridSize;
+    const stepY = (maxY - minY) / gridSize;
+
+    // Convert stations to pixel coordinates
+    const points = stations.map(station => {
+      const [x, y] = this.latLonToPixel(station.lat, station.lon);
+      return { x, y, value: station.value };
+    });
+
+    // Generate grid values using optimized IDW interpolation (limits to nearest neighbors)
+    const values = new Array(gridSize * gridSize);
+    for (let j = 0; j < gridSize; j++) {
+      for (let i = 0; i < gridSize; i++) {
+        const x = minX + i * stepX;
+        const y = minY + j * stepY;
+        values[j * gridSize + i] = this._interpolateValueIDWOptimized(x, y, points, 2, 15);
+      }
+    }
+
+    // Create contour generator
+    const contours = d3.contours()
+      .size([gridSize, gridSize])
+      .thresholds(thresholds);
+
+    // Generate contours
+    const contourData = contours(values);
+
+    // Create transform to map grid coordinates to screen coordinates
+    const transform = d3.geoTransform({
+      point: function(x, y) {
+        this.stream.point(minX + x * stepX, minY + y * stepY);
+      }
+    });
+    const contourPath = d3.geoPath().projection(transform);
+
+    // Create a group for contours, clipped to Finland shape
+    const contourGroup = this.layers.heatmap.append('g')
+      .attr('class', 'contour-lines')
+      .attr('clip-path', 'url(#finland-clip)');
+
+    // Draw filled contour bands
+    contourData.forEach((contour, i) => {
+      const color = colorScale.getColor(contour.value);
+
+      contourGroup.append('path')
+        .attr('class', 'contour-band')
+        .attr('d', contourPath(contour))
+        .attr('fill', color)
+        .attr('fill-opacity', 0.7)
+        .attr('stroke', 'rgba(0,0,0,0.3)')
+        .attr('stroke-width', 0.5);
+    });
+
+    console.log(`Rendered ${contourData.length} contour bands`);
+  },
+
+  /**
+   * Interpolate value at a point using IDW
+   * @private
+   */
+  _interpolateValueIDW(x, y, points, power = 2) {
+    if (points.length === 0) return 0;
+
+    let totalWeight = 0;
+    let weightedValue = 0;
+    const epsilon = 0.0001;
+
+    points.forEach(point => {
+      const dist = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
+      const weight = 1 / Math.pow(dist + epsilon, power);
+
+      weightedValue += point.value * weight;
+      totalWeight += weight;
+    });
+
+    return totalWeight > 0 ? weightedValue / totalWeight : 0;
+  },
+
+  /**
+   * Optimized IDW interpolation - only uses nearest neighbors for better performance
+   * Uses partial sorting to avoid full sort of all stations
+   * @private
+   */
+  _interpolateValueIDWOptimized(x, y, points, power = 2, maxNeighbors = 15) {
+    if (points.length === 0) return 0;
+
+    // For small datasets, use all points
+    if (points.length <= maxNeighbors) {
+      let totalWeight = 0;
+      let weightedValue = 0;
+      const epsilon = 0.0001;
+
+      points.forEach(point => {
+        const dist = Math.sqrt((x - point.x) ** 2 + (y - point.y) ** 2);
+        const weight = 1 / Math.pow(dist + epsilon, power);
+        weightedValue += point.value * weight;
+        totalWeight += weight;
+      });
+
+      return totalWeight > 0 ? weightedValue / totalWeight : 0;
+    }
+
+    // For larger datasets, find nearest neighbors using partial sort
+    const nearestPoints = [];
+
+    // Calculate distances and maintain a max-heap of k nearest neighbors
+    points.forEach(point => {
+      const distSq = (x - point.x) ** 2 + (y - point.y) ** 2;
+
+      if (nearestPoints.length < maxNeighbors) {
+        nearestPoints.push({ distSq, value: point.value });
+        if (nearestPoints.length === maxNeighbors) {
+          // Sort once when we reach k neighbors
+          nearestPoints.sort((a, b) => b.distSq - a.distSq);
+        }
+      } else if (distSq < nearestPoints[0].distSq) {
+        // Replace furthest neighbor
+        nearestPoints[0] = { distSq, value: point.value };
+        // Bubble down to maintain heap property
+        let idx = 0;
+        while (idx * 2 + 1 < maxNeighbors) {
+          let maxIdx = idx;
+          const left = idx * 2 + 1;
+          const right = idx * 2 + 2;
+
+          if (left < nearestPoints.length && nearestPoints[left].distSq > nearestPoints[maxIdx].distSq) {
+            maxIdx = left;
+          }
+          if (right < nearestPoints.length && nearestPoints[right].distSq > nearestPoints[maxIdx].distSq) {
+            maxIdx = right;
+          }
+
+          if (maxIdx === idx) break;
+
+          [nearestPoints[idx], nearestPoints[maxIdx]] = [nearestPoints[maxIdx], nearestPoints[idx]];
+          idx = maxIdx;
+        }
+      }
+    });
+
+    // Perform IDW on nearest neighbors only
+    let totalWeight = 0;
+    let weightedValue = 0;
+    const epsilon = 0.0001;
+
+    nearestPoints.forEach(point => {
+      const dist = Math.sqrt(point.distSq);
+      const weight = 1 / Math.pow(dist + epsilon, power);
+      weightedValue += point.value * weight;
+      totalWeight += weight;
+    });
+
+    return totalWeight > 0 ? weightedValue / totalWeight : 0;
+  },
+
+  /**
+   * Add rasterized IDW heatmap using canvas
+   * @param {Array} stations - Array of {lat, lon, value}
+   * @param {Object} colorScale - Color scale with getColor method
+   * @param {number} resolution - Grid resolution (default 150)
+   */
+  addRasterHeatmap(stations, colorScale, resolution = 150) {
+    if (!this.layers.heatmap || !this.projection || !this.finlandGeoJSON) return;
+
+    // Clear existing heatmap elements
+    this.layers.heatmap.selectAll('*').remove();
+
+    if (stations.length === 0) return;
+
+    // Get projected bounds of Finland
+    const topLeft = this.latLonToPixel(this.FINLAND_BOUNDS.north, this.FINLAND_BOUNDS.west);
+    const bottomRight = this.latLonToPixel(this.FINLAND_BOUNDS.south, this.FINLAND_BOUNDS.east);
+
+    const minX = Math.min(topLeft[0], bottomRight[0]);
+    const maxX = Math.max(topLeft[0], bottomRight[0]);
+    const minY = Math.min(topLeft[1], bottomRight[1]);
+    const maxY = Math.max(topLeft[1], bottomRight[1]);
+
+    const width = Math.ceil(maxX - minX);
+    const height = Math.ceil(maxY - minY);
+
+    // Convert stations to pixel coordinates
+    const points = stations.map(station => {
+      const [x, y] = this.latLonToPixel(station.lat, station.lon);
+      return { x: x - minX, y: y - minY, value: station.value };
+    });
+
+    // Create off-screen canvas for rendering
+    const canvas = document.createElement('canvas');
+    canvas.width = resolution;
+    canvas.height = Math.round(resolution * (height / width));
+    const ctx = canvas.getContext('2d');
+
+    const scaleX = canvas.width / width;
+    const scaleY = canvas.height / height;
+
+    // Scale points to canvas coordinates
+    const scaledPoints = points.map(p => ({
+      x: p.x * scaleX,
+      y: p.y * scaleY,
+      value: p.value
+    }));
+
+    // Create ImageData and fill with interpolated values
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        // Optimized IDW interpolation (nearest neighbors only)
+        const value = this._interpolateValueIDWOptimized(x, y, scaledPoints, 2, 15);
+        const color = colorScale.getColor(value);
+        const rgb = this._parseColor(color);
+
+        const idx = (y * canvas.width + x) * 4;
+        if (rgb) {
+          data[idx] = rgb.r;
+          data[idx + 1] = rgb.g;
+          data[idx + 2] = rgb.b;
+          data[idx + 3] = 220; // Alpha
+        }
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    // Add canvas as foreignObject in SVG, clipped to Finland
+    const fo = this.layers.heatmap.append('foreignObject')
+      .attr('x', minX)
+      .attr('y', minY)
+      .attr('width', width)
+      .attr('height', height)
+      .attr('clip-path', 'url(#finland-clip)');
+
+    // Create img element from canvas
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL();
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.imageRendering = 'auto';
+
+    fo.node().appendChild(img);
+
+    console.log(`Rendered raster heatmap ${canvas.width}x${canvas.height}`);
   },
 
   /**
