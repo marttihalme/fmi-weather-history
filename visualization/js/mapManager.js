@@ -833,7 +833,7 @@ const MapManager = {
       for (let i = 0; i < gridSize; i++) {
         const x = minX + i * stepX;
         const y = minY + j * stepY;
-        values[j * gridSize + i] = this._interpolateValueIDWOptimized(x, y, points, 2, 15);
+        values[j * gridSize + i] = this._interpolateValueIDWOptimized(x, y, points, 2.5, 12);
       }
     }
 
@@ -1123,10 +1123,10 @@ const MapManager = {
     console.log('Interpolation layer added:', name);
   },
 
-  // Zone latitude boundaries
+  // Zone latitude boundaries (Etelä-Suomen pohjoinen raja 62.0° = Juupajoen korkeus)
   ZONE_BOUNDARIES: {
-    'Etelä-Suomi': { latMin: 59.5, latMax: 61.5 },
-    'Keski-Suomi': { latMin: 61.5, latMax: 64.0 },
+    'Etelä-Suomi': { latMin: 59.5, latMax: 62.0 },
+    'Keski-Suomi': { latMin: 62.0, latMax: 64.0 },
     'Pohjois-Suomi': { latMin: 64.0, latMax: 66.0 },
     'Lappi': { latMin: 66.0, latMax: 70.1 }
   },

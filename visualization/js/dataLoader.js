@@ -13,6 +13,7 @@ const DataLoader = {
     winterStarts: null, // Winter progression
     slipperyRisk: null, // Slippery road risk data
     firstFrost: null, // First frost data
+    firstSnow: null, // First snow data (ensilumi)
     precomputedGrids: null, // Pre-computed IDW grids
   },
 
@@ -40,6 +41,7 @@ const DataLoader = {
     winterStarts: false,
     slipperyRisk: false,
     firstFrost: false,
+    firstSnow: false,
     precomputedGrids: false,
   },
 
@@ -52,6 +54,7 @@ const DataLoader = {
     winterStarts: false,
     slipperyRisk: false,
     firstFrost: false,
+    firstSnow: false,
     precomputedGrids: false,
   },
 
@@ -72,6 +75,7 @@ const DataLoader = {
         winterStarts,
         slipperyRisk,
         firstFrost,
+        firstSnow,
       ] = await Promise.all([
         this.loadZoneSummary(),
         this.loadStationData(),
@@ -80,6 +84,7 @@ const DataLoader = {
         this.loadWinterStarts(),
         this.loadSlipperyRisk(),
         this.loadFirstFrost(),
+        this.loadFirstSnow(),
       ]);
 
       console.log("Essential data loaded successfully");
@@ -90,6 +95,7 @@ const DataLoader = {
       console.log("- Winter seasons:", winterStarts.length, "records");
       console.log("- Slippery risk:", slipperyRisk.length, "records");
       console.log("- First frost:", firstFrost.length, "records");
+      console.log("- First snow:", firstSnow.length, "records");
 
       // Load precomputed grids in background (not blocking)
       this.loadPrecomputedGrids().catch((err) => {
@@ -107,6 +113,7 @@ const DataLoader = {
         winterStarts,
         slipperyRisk,
         firstFrost,
+        firstSnow,
       };
     } catch (error) {
       console.error("Error loading data:", error);
@@ -255,6 +262,30 @@ const DataLoader = {
       return [];
     } finally {
       this.loading.firstFrost = false;
+    }
+  },
+
+  /**
+   * Load first snow data (ensilumi)
+   * @returns {Promise<Array>} First snow records
+   */
+  async loadFirstSnow() {
+    if (this.loaded.firstSnow) return this.data.firstSnow;
+
+    this.loading.firstSnow = true;
+
+    try {
+      const data = await this.fetchJSON("data/first_snow.json");
+      this.data.firstSnow = data;
+      this.loaded.firstSnow = true;
+      return data;
+    } catch (error) {
+      console.warn("First snow data not available:", error.message);
+      this.data.firstSnow = [];
+      this.loaded.firstSnow = true;
+      return [];
+    } finally {
+      this.loading.firstSnow = false;
     }
   },
 
@@ -547,6 +578,25 @@ const DataLoader = {
   },
 
   /**
+   * Get first snow markers for a specific date (ensilumi)
+   * @param {string} date - Date string (YYYY-MM-DD)
+   * @returns {Array} Array of first snow marker objects
+   */
+  getFirstSnowForDate(date) {
+    if (!this.data.firstSnow) return [];
+
+    return this.data.firstSnow
+      .filter((record) => record.first_snow_date === date)
+      .map((record) => ({
+        type: "first_snow",
+        zone: record.zone,
+        date: record.first_snow_date,
+        snow_depth: record.first_snow_depth,
+        year: record.year,
+      }));
+  },
+
+  /**
    * Get frost periods active on a specific date
    * @param {string} date - Date string (YYYY-MM-DD)
    * @returns {Array} Array of frost period objects
@@ -593,6 +643,7 @@ const DataLoader = {
       ...this.getSlipperyPeriodsForDate(date),
       ...this.getFirstFrostForDate(date),
       ...this.getFrostPeriodsForDate(date),
+      ...this.getFirstSnowForDate(date),
     ];
 
     // Also add anomalies, normalized to the same format
@@ -618,6 +669,7 @@ const DataLoader = {
       "winter_end",
       "first_frost",
       "frost_period",
+      "first_snow",
       "cold_spell",
       "warm_spell",
       "Äärimmäinen kylmyys",

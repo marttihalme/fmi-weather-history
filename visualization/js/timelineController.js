@@ -43,6 +43,7 @@ const TimelineController = {
     slipperyBar: true,
     frostMarker: true,
     frostBar: true,
+    snowMarker: true,
     extremeCold: true,
     coldSnap: true,
     heatWave: true,
@@ -107,6 +108,13 @@ const TimelineController = {
       label: "Hallajakso",
       color: "rgba(0, 188, 212, 0.5)",
       description: "Hallajakso kattaa päivät, jolloin yölämpötila laskee alle 0°C. Jakso lasketaan ensimmäisestä yöpakkasesta eteenpäin ja kuvaa hallariski-aikaa syksyllä.",
+    },
+    first_snow: {
+      icon: "❄️",
+      cssClass: "first-snow",
+      label: "Ensilumi",
+      color: "#90caf9",
+      description: "Ensilumi on syksyn ensimmäinen päivä, jolloin maassa on mitattavissa oleva lumipeite (≥1 cm). Tämä merkitsee talven lähestymistä ja lumikauden alkua alueella.",
     },
     "Äärimmäinen kylmyys": {
       icon: "❄️",
@@ -591,6 +599,36 @@ const TimelineController = {
       });
     }
 
+    // Draw first snow markers (context view) - ensilumi
+    if (DataLoader.data.firstSnow && this.visibility.snowMarker) {
+      DataLoader.data.firstSnow.forEach((snow) => {
+        const zoneIndex = zones.indexOf(snow.zone);
+        if (zoneIndex === -1) return;
+
+        const y = zoneIndex * zoneHeight;
+
+        // Draw first snow marker
+        if (snow.first_snow_date) {
+          const snowDate = new Date(snow.first_snow_date);
+          if (!isNaN(snowDate.getTime())) {
+            const x = xScale(snowDate);
+            if (isFinite(x)) {
+              this.contextSvg
+                .append("line")
+                .attr("class", "first-snow-line")
+                .attr("x1", x)
+                .attr("y1", y)
+                .attr("x2", x)
+                .attr("y2", y + zoneHeight)
+                .attr("stroke", "#90caf9")
+                .attr("stroke-width", 1.5)
+                .attr("stroke-dasharray", "2,2");
+            }
+          }
+        }
+      });
+    }
+
     // Draw winter periods with cold spells (detailed view)
     if (DataLoader.data.winterStarts && this.visibility.coldSpell) {
       DataLoader.data.winterStarts.forEach((winter) => {
@@ -993,6 +1031,61 @@ const TimelineController = {
                 self.hideAnomalyTooltip();
               });
           });
+        }
+      });
+    }
+
+    // Draw first snow data (focus view with tooltips) - ensilumi
+    if (DataLoader.data.firstSnow && this.visibility.snowMarker) {
+      DataLoader.data.firstSnow.forEach((snow) => {
+        const zoneIndex = zones.indexOf(snow.zone);
+        if (zoneIndex === -1) return;
+
+        const y = zoneIndex * zoneHeight;
+
+        // Draw first snow marker line
+        if (snow.first_snow_date) {
+          const snowDate = new Date(snow.first_snow_date);
+          // Skip invalid dates
+          if (isNaN(snowDate.getTime())) return;
+          if (snowDate >= startDomain && snowDate <= endDomain) {
+            const x = xScale(snowDate);
+            if (!isFinite(x)) return;
+
+            const line = this.focusSvg
+              .append("line")
+              .attr("class", "first-snow-line")
+              .attr("x1", x)
+              .attr("y1", y)
+              .attr("x2", x)
+              .attr("y2", y + zoneHeight)
+              .attr("stroke", "#90caf9")
+              .attr("stroke-width", 2)
+              .attr("stroke-dasharray", "4,2");
+
+            // Add hover area for better mouse targeting
+            this.focusSvg
+              .append("rect")
+              .attr("class", "line-hover-area")
+              .attr("x", x - 8)
+              .attr("y", y)
+              .attr("width", 16)
+              .attr("height", zoneHeight)
+              .attr("fill", "transparent")
+              .style("cursor", "pointer")
+              .on("mouseover", function (event) {
+                line.attr("stroke-width", 3);
+                self.showSnowTooltip(
+                  event.clientX,
+                  event.clientY,
+                  snow
+                );
+              })
+              .on("mouseout", function () {
+                line.attr("stroke-width", 2);
+                self.hideAnomalyTooltip();
+              });
+          }
         }
       });
     }
@@ -1909,6 +2002,54 @@ const TimelineController = {
   },
 
   /**
+   * Show tooltip for first snow data (ensilumi)
+   */
+  showSnowTooltip(x, y, snow) {
+    let tooltip = document.getElementById("anomaly-timeline-tooltip");
+
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.id = "anomaly-timeline-tooltip";
+      tooltip.style.position = "fixed";
+      tooltip.style.background = "rgba(0, 0, 0, 0.9)";
+      tooltip.style.color = "white";
+      tooltip.style.padding = "10px";
+      tooltip.style.borderRadius = "6px";
+      tooltip.style.fontSize = "12px";
+      tooltip.style.zIndex = "10000";
+      tooltip.style.pointerEvents = "none";
+      tooltip.style.maxWidth = "300px";
+      tooltip.style.boxShadow = "0 4px 12px rgba(0,0,0,0.3)";
+      document.body.appendChild(tooltip);
+    }
+
+    const snowDepth =
+      snow.first_snow_depth !== null ? snow.first_snow_depth.toFixed(1) : "-";
+    const maxSnowDepth =
+      snow.max_snow_depth !== null ? snow.max_snow_depth.toFixed(1) : "-";
+
+    let html = `<div style="color: #90caf9;">
+      <strong>❄️ Ensilumi</strong><br>
+      <span style="font-size: 11px;">${snow.zone} • Syksy ${snow.year}</span>
+    </div>
+    <div style="margin-top: 8px;">
+      <strong>${snow.first_snow_date}</strong><br>
+      Lumensyvyys: ${snowDepth} cm
+    </div>`;
+
+    // Add season summary
+    html += `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #444; font-size: 11px; color: #aaa;">
+      Lumipäiviä syksyllä: ${snow.snow_days_total}<br>
+      Maksimilumi: ${maxSnowDepth} cm
+    </div>`;
+
+    tooltip.innerHTML = html;
+
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, x, y);
+  },
+
+  /**
    * Attach event handlers to timeline UI elements
    */
   attachEventHandlers() {
@@ -1992,6 +2133,7 @@ const TimelineController = {
 
   /**
    * Attach click handlers to legend items for toggling visibility
+   * Supports drag-to-toggle: hold mouse button and drag over items to toggle multiple
    */
   attachLegendToggles() {
     const legendContainer = document.querySelector("#anomaly-timeline .anomaly-legend-inline");
@@ -1999,43 +2141,79 @@ const TimelineController = {
 
     const legendItems = legendContainer.querySelectorAll(".legend-item");
 
+    // Drag-to-toggle state
+    let isDragging = false;
+    let dragTargetState = null; // The state we're setting items to (true/false)
+    let toggledDuringDrag = new Set(); // Track which items were toggled during this drag
+
+    // Helper to get visKey from a legend item
+    const getVisKey = (item) => {
+      if (item.querySelector(".cold-spell-icon")) return "coldSpell";
+      if (item.querySelector(".warm-spell-icon")) return "warmSpell";
+      if (item.querySelector(".winter-start-icon")) return "winterStart";
+      if (item.querySelector(".winter-end-icon")) return "winterEnd";
+      if (item.querySelector(".slippery-start-icon")) return "slipperyStart";
+      if (item.querySelector(".slippery-bar-icon")) return "slipperyBar";
+      if (item.querySelector(".frost-marker-icon")) return "frostMarker";
+      if (item.querySelector(".frost-bar-icon")) return "frostBar";
+      if (item.querySelector(".snow-marker-icon")) return "snowMarker";
+      if (item.querySelector(".anomaly-icon.extreme-cold")) return "extremeCold";
+      if (item.querySelector(".anomaly-icon.cold-snap")) return "coldSnap";
+      if (item.querySelector(".anomaly-icon.heat-wave")) return "heatWave";
+      if (item.querySelector(".anomaly-icon.return-winter")) return "returnWinter";
+      if (item.querySelector(".anomaly-icon.temp-jump")) return "tempJump";
+      return null;
+    };
+
+    // Helper to toggle an item
+    const toggleItem = (item, visKey, forceState = null) => {
+      const newState = forceState !== null ? forceState : !this.visibility[visKey];
+      this.visibility[visKey] = newState;
+
+      if (newState) {
+        item.classList.remove("legend-disabled");
+      } else {
+        item.classList.add("legend-disabled");
+      }
+    };
+
     legendItems.forEach((item) => {
       // Make legend items clickable
       item.style.cursor = "pointer";
       item.style.userSelect = "none";
 
-      // Determine which visibility key this legend item controls
-      let visKey = null;
-      if (item.querySelector(".cold-spell-icon")) visKey = "coldSpell";
-      else if (item.querySelector(".warm-spell-icon")) visKey = "warmSpell";
-      else if (item.querySelector(".winter-start-icon")) visKey = "winterStart";
-      else if (item.querySelector(".winter-end-icon")) visKey = "winterEnd";
-      else if (item.querySelector(".slippery-start-icon")) visKey = "slipperyStart";
-      else if (item.querySelector(".slippery-bar-icon")) visKey = "slipperyBar";
-      else if (item.querySelector(".frost-marker-icon")) visKey = "frostMarker";
-      else if (item.querySelector(".frost-bar-icon")) visKey = "frostBar";
-      else if (item.querySelector(".anomaly-icon.extreme-cold")) visKey = "extremeCold";
-      else if (item.querySelector(".anomaly-icon.cold-snap")) visKey = "coldSnap";
-      else if (item.querySelector(".anomaly-icon.heat-wave")) visKey = "heatWave";
-      else if (item.querySelector(".anomaly-icon.return-winter")) visKey = "returnWinter";
-      else if (item.querySelector(".anomaly-icon.temp-jump")) visKey = "tempJump";
+      const visKey = getVisKey(item);
+      if (!visKey) return;
 
-      if (visKey) {
-        item.addEventListener("click", () => {
-          // Toggle visibility
-          this.visibility[visKey] = !this.visibility[visKey];
+      // Mouse down - start drag mode
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        isDragging = true;
+        toggledDuringDrag.clear();
 
-          // Update visual state
-          if (this.visibility[visKey]) {
-            item.classList.remove("legend-disabled");
-          } else {
-            item.classList.add("legend-disabled");
-          }
+        // Toggle this item and set the target state for drag
+        dragTargetState = !this.visibility[visKey];
+        toggleItem(item, visKey, dragTargetState);
+        toggledDuringDrag.add(visKey);
 
-          // Re-render timeline
+        this.drawAnomalyTimeline();
+      });
+
+      // Mouse enter while dragging - toggle this item too
+      item.addEventListener("mouseenter", () => {
+        if (isDragging && visKey && !toggledDuringDrag.has(visKey)) {
+          toggleItem(item, visKey, dragTargetState);
+          toggledDuringDrag.add(visKey);
           this.drawAnomalyTimeline();
-        });
-      }
+        }
+      });
+    });
+
+    // Mouse up anywhere - end drag mode
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      dragTargetState = null;
+      toggledDuringDrag.clear();
     });
   },
 

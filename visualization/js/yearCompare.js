@@ -45,6 +45,7 @@ const YearCompare = {
     slipperyBar: true,
     frostMarker: true,
     frostBar: true,
+    snowMarker: true,
     extremeCold: true,
     coldSnap: true,
     heatWave: true,
@@ -102,6 +103,7 @@ const YearCompare = {
 
   /**
    * Attach click handlers to legend items for toggling visibility
+   * Supports drag-to-toggle: hold mouse button and drag over items to toggle multiple
    */
   attachLegendToggles() {
     const legendContainer = document.querySelector(
@@ -111,49 +113,79 @@ const YearCompare = {
 
     const legendItems = legendContainer.querySelectorAll(".legend-item");
 
+    // Drag-to-toggle state
+    let isDragging = false;
+    let dragTargetState = null; // The state we're setting items to (true/false)
+    let toggledDuringDrag = new Set(); // Track which items were toggled during this drag
+
+    // Helper to get visKey from a legend item
+    const getVisKey = (item) => {
+      if (item.querySelector(".cold-spell-icon")) return "coldSpell";
+      if (item.querySelector(".warm-spell-icon")) return "warmSpell";
+      if (item.querySelector(".winter-start-icon")) return "winterStart";
+      if (item.querySelector(".winter-end-icon")) return "winterEnd";
+      if (item.querySelector(".slippery-start-icon")) return "slipperyStart";
+      if (item.querySelector(".slippery-bar-icon")) return "slipperyBar";
+      if (item.querySelector(".frost-marker-icon")) return "frostMarker";
+      if (item.querySelector(".frost-bar-icon")) return "frostBar";
+      if (item.querySelector(".snow-marker-icon")) return "snowMarker";
+      if (item.querySelector(".anomaly-icon.extreme-cold")) return "extremeCold";
+      if (item.querySelector(".anomaly-icon.cold-snap")) return "coldSnap";
+      if (item.querySelector(".anomaly-icon.heat-wave")) return "heatWave";
+      if (item.querySelector(".anomaly-icon.return-winter")) return "returnWinter";
+      if (item.querySelector(".anomaly-icon.temp-jump")) return "tempJump";
+      return null;
+    };
+
+    // Helper to toggle an item
+    const toggleItem = (item, visKey, forceState = null) => {
+      const newState = forceState !== null ? forceState : !this.visibility[visKey];
+      this.visibility[visKey] = newState;
+
+      if (newState) {
+        item.classList.remove("legend-disabled");
+      } else {
+        item.classList.add("legend-disabled");
+      }
+    };
+
     legendItems.forEach((item) => {
       // Make legend items clickable
       item.style.cursor = "pointer";
       item.style.userSelect = "none";
 
-      // Determine which visibility key this legend item controls
-      let visKey = null;
-      if (item.querySelector(".cold-spell-icon")) visKey = "coldSpell";
-      else if (item.querySelector(".warm-spell-icon")) visKey = "warmSpell";
-      else if (item.querySelector(".winter-start-icon")) visKey = "winterStart";
-      else if (item.querySelector(".winter-end-icon")) visKey = "winterEnd";
-      else if (item.querySelector(".slippery-start-icon"))
-        visKey = "slipperyStart";
-      else if (item.querySelector(".slippery-bar-icon")) visKey = "slipperyBar";
-      else if (item.querySelector(".frost-marker-icon")) visKey = "frostMarker";
-      else if (item.querySelector(".frost-bar-icon")) visKey = "frostBar";
-      else if (item.querySelector(".anomaly-icon.extreme-cold"))
-        visKey = "extremeCold";
-      else if (item.querySelector(".anomaly-icon.cold-snap"))
-        visKey = "coldSnap";
-      else if (item.querySelector(".anomaly-icon.heat-wave"))
-        visKey = "heatWave";
-      else if (item.querySelector(".anomaly-icon.return-winter"))
-        visKey = "returnWinter";
-      else if (item.querySelector(".anomaly-icon.temp-jump"))
-        visKey = "tempJump";
+      const visKey = getVisKey(item);
+      if (!visKey) return;
 
-      if (visKey) {
-        item.addEventListener("click", () => {
-          // Toggle visibility
-          this.visibility[visKey] = !this.visibility[visKey];
+      // Mouse down - start drag mode
+      item.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        isDragging = true;
+        toggledDuringDrag.clear();
 
-          // Update visual state
-          if (this.visibility[visKey]) {
-            item.classList.remove("legend-disabled");
-          } else {
-            item.classList.add("legend-disabled");
-          }
+        // Toggle this item and set the target state for drag
+        dragTargetState = !this.visibility[visKey];
+        toggleItem(item, visKey, dragTargetState);
+        toggledDuringDrag.add(visKey);
 
-          // Re-render timeline
+        this.render();
+      });
+
+      // Mouse enter while dragging - toggle this item too
+      item.addEventListener("mouseenter", () => {
+        if (isDragging && visKey && !toggledDuringDrag.has(visKey)) {
+          toggleItem(item, visKey, dragTargetState);
+          toggledDuringDrag.add(visKey);
           this.render();
-        });
-      }
+        }
+      });
+    });
+
+    // Mouse up anywhere - end drag mode
+    document.addEventListener("mouseup", () => {
+      isDragging = false;
+      dragTargetState = null;
+      toggledDuringDrag.clear();
     });
   },
 
@@ -850,6 +882,62 @@ const YearCompare = {
       }
     });
 
+    // Draw first snow data for this zone and year (ensilumi)
+    const snowData = DataLoader.data.firstSnow || [];
+    const relevantSnow = snowData.filter(
+      (s) => s.zone === zone && s.year === year
+    );
+
+    relevantSnow.forEach((snow) => {
+      // Draw first snow marker line
+      if (this.visibility.snowMarker && snow.first_snow_date) {
+        const snowDate = new Date(snow.first_snow_date);
+        if (snowDate >= yearStart && snowDate <= yearEnd) {
+          const x = this.dateToX(snowDate, yearStart, yearMs, width);
+          if (x !== null && x >= 0 && x <= width) {
+            const line = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "line"
+            );
+            line.setAttribute("x1", x);
+            line.setAttribute("y1", 0);
+            line.setAttribute("x2", x);
+            line.setAttribute("y2", height);
+            line.setAttribute("stroke", "#90caf9");
+            line.setAttribute("stroke-width", "2");
+            line.setAttribute("stroke-dasharray", "4,2");
+            line.setAttribute("class", "snow-marker start");
+            svg.appendChild(line);
+
+            // Add hover area for better mouse targeting
+            const hoverRect = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "rect"
+            );
+            hoverRect.setAttribute("x", x - 8);
+            hoverRect.setAttribute("y", 0);
+            hoverRect.setAttribute("width", 16);
+            hoverRect.setAttribute("height", height);
+            hoverRect.setAttribute("fill", "transparent");
+            hoverRect.setAttribute("class", "line-hover-area");
+            hoverRect.style.cursor = "pointer";
+            hoverRect.addEventListener("mouseenter", (e) => {
+              this.showSnowTooltip(e, snow);
+              line.style.strokeWidth = "3";
+            });
+            hoverRect.addEventListener("mouseleave", () => {
+              this.hideTooltip();
+              line.style.strokeWidth = "2";
+            });
+            hoverRect.addEventListener("click", () => {
+              this.showPhenomenonDetails("first_snow", snow);
+            });
+            svg.appendChild(hoverRect);
+          }
+        }
+      }
+    });
+
     // Draw anomalies for this zone and year
     const yearAnomalies = anomalies.filter((a) => {
       if (a.zone !== zone) return false;
@@ -1324,6 +1412,57 @@ const YearCompare = {
         Kylmin yö: ${coldestTemp}°C
       </div>`;
     }
+
+    tooltip.innerHTML = html;
+
+    // Position tooltip intelligently
+    this.positionTooltip(tooltip, event.clientX, event.clientY);
+  },
+
+  /**
+   * Show first snow tooltip (ensilumi)
+   */
+  showSnowTooltip(event, snow) {
+    let tooltip = document.getElementById("compare-tooltip");
+
+    if (!tooltip) {
+      tooltip = document.createElement("div");
+      tooltip.id = "compare-tooltip";
+      tooltip.style.cssText = `
+        position: fixed;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 10000;
+        pointer-events: none;
+        max-width: 280px;
+      `;
+      document.body.appendChild(tooltip);
+    }
+
+    const snowDepth =
+      snow.first_snow_depth !== null && snow.first_snow_depth !== undefined
+        ? snow.first_snow_depth.toFixed(1)
+        : "-";
+    const maxSnowDepth =
+      snow.max_snow_depth !== null && snow.max_snow_depth !== undefined
+        ? snow.max_snow_depth.toFixed(1)
+        : "-";
+
+    const html = `<div style="color: #90caf9;">
+      <strong>❄️ Ensilumi</strong>
+    </div>
+    <div style="margin-top: 4px;">
+      ${snow.zone} • Syksy ${snow.year}<br>
+      ${snow.first_snow_date}<br>
+      Lumensyvyys: ${snowDepth} cm
+    </div>
+    <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid #444; font-size: 11px; color: #aaa;">
+      Lumipäiviä syksyllä: ${snow.snow_days_total}<br>
+      Maksimilumi: ${maxSnowDepth} cm
+    </div>`;
 
     tooltip.innerHTML = html;
 
