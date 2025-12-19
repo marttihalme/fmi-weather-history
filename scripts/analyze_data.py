@@ -320,7 +320,7 @@ def find_all_warm_spells(temps, dates, min_days=MIN_COLD_SPELL_DAYS):
     return warm_spells
 
 
-def analyze_winter_season(daily_avg, year):
+def analyze_winter_season(daily_avg, year, is_current_season=False):
     """Analysoi yhden talvikauden."""
     temps = daily_avg.values
     dates = daily_avg.index.tolist()
@@ -336,9 +336,12 @@ def analyze_winter_season(daily_avg, year):
         return None
 
     season_start = significant_spells[0]['start']
-    season_end = significant_spells[-1]['end']
+    # Käynnissä olevalle kaudelle ei aseteta päättymispäivää
+    last_spell_end = significant_spells[-1]['end']
+    season_end = None if is_current_season else last_spell_end
 
-    season_mask = (daily_avg.index >= season_start) & (daily_avg.index <= season_end)
+    # Käytä viimeisen pakkasjakson loppua tilastojen laskentaan
+    season_mask = (daily_avg.index >= season_start) & (daily_avg.index <= last_spell_end)
     season_temps = daily_avg[season_mask]
 
     total_days = len(season_temps)
@@ -386,6 +389,13 @@ def analyze_winter_by_zone(df, zone_name):
     results = []
     years = zone_data['date'].dt.year.unique()
 
+    # Määritä nykyinen kausi (syys-toukokuu)
+    today = pd.Timestamp.now()
+    if today.month >= 9:
+        current_season_year = today.year
+    else:
+        current_season_year = today.year - 1
+
     for year in years:
         start_date = pd.Timestamp(f'{year}-09-01')
         end_date = pd.Timestamp(f'{year+1}-05-31')
@@ -403,7 +413,9 @@ def analyze_winter_by_zone(df, zone_name):
         if len(daily_avg) < WINTER_CONSECUTIVE_DAYS:
             continue
 
-        season_analysis = analyze_winter_season(daily_avg, year)
+        # Onko tämä käynnissä oleva kausi?
+        is_current = (year == current_season_year)
+        season_analysis = analyze_winter_season(daily_avg, year, is_current_season=is_current)
 
         if season_analysis:
             season_analysis['zone'] = zone_name
@@ -436,7 +448,8 @@ def run_winter_analysis(df):
 
             for r in zone_results:
                 print(f"\n  {r['season']}:")
-                print(f"    Talvikausi: {r['season_start'].strftime('%d.%m.%Y')} - {r['season_end'].strftime('%d.%m.%Y')}")
+                end_str = r['season_end'].strftime('%d.%m.%Y') if r['season_end'] else 'käynnissä'
+                print(f"    Talvikausi: {r['season_start'].strftime('%d.%m.%Y')} - {end_str}")
                 print(f"    Pakkaspäiviä: {r['frost_days']}/{r['total_days']} ({r['coverage_pct']}%)")
                 print(f"    Pakkasjaksoja: {r['cold_spells_count']}")
 
@@ -448,7 +461,7 @@ def run_winter_analysis(df):
                 'zone': r['zone'],
                 'season': r['season'],
                 'season_start': r['season_start'].strftime('%Y-%m-%d'),
-                'season_end': r['season_end'].strftime('%Y-%m-%d'),
+                'season_end': r['season_end'].strftime('%Y-%m-%d') if r['season_end'] else None,
                 'total_days': r['total_days'],
                 'frost_days': r['frost_days'],
                 'coverage_pct': r['coverage_pct'],
@@ -925,6 +938,112 @@ def run_weather_anomalies_analysis(df):
 
 
 # ============================================================================
+# 5. ENSILUMI
+# ============================================================================
+
+SNOW_THRESHOLD = 1.0  # cm, pieni kynnys jotta satunnainen mittausvirhe ei häiritse
+
+
+def analyze_autumn_first_snow(df, zone_name, year):
+    """Analysoi syksyn ensilumi vyöhykkeelle."""
+    start_date = pd.Timestamp(f'{year}-09-01')
+    end_date = pd.Timestamp(f'{year}-12-31')
+
+    mask = (df['zone_name'] == zone_name) & \
+           (df['date'] >= start_date) & \
+           (df['date'] <= end_date)
+
+    zone_data = df[mask].copy()
+
+    if len(zone_data) < 30:
+        return None
+
+    daily = zone_data.groupby('date').agg({
+        'Snow depth': 'mean'
+    }).rename(columns={
+        'Snow depth': 'snow_depth'
+    })
+
+    # Etsi ensimmäinen päivä kun lunta maassa
+    first_snow = None
+    for date, row in daily.iterrows():
+        if pd.notna(row['snow_depth']) and row['snow_depth'] >= SNOW_THRESHOLD:
+            first_snow = {'date': date, 'snow_depth': row['snow_depth']}
+            break
+
+    if not first_snow:
+        return None
+
+    # Laske lumipäivien määrä syksyllä
+    snow_days = (daily['snow_depth'] >= SNOW_THRESHOLD).sum()
+
+    # Maksimilumensyvyys syksyllä
+    max_snow = daily['snow_depth'].max()
+
+    return {
+        'zone': zone_name,
+        'year': int(year),
+        'first_snow_date': first_snow['date'],
+        'first_snow_depth': float(round(first_snow['snow_depth'], 1)),
+        'snow_days_total': int(snow_days),
+        'max_snow_depth': float(round(max_snow, 1)) if pd.notna(max_snow) else None
+    }
+
+
+def run_first_snow_analysis(df):
+    """Suorita ensilumi-analyysi."""
+    print("\n" + "=" * 70)
+    print("ENSILUMI-ANALYYSI")
+    print("=" * 70)
+    print(f"\nKriteerit:")
+    print(f"  - Ensilumi: lumensyvyys >= {SNOW_THRESHOLD} cm")
+    print(f"  - Analysoitava kausi: syyskuu-joulukuu")
+
+    zones = ['Etelä-Suomi', 'Keski-Suomi', 'Pohjois-Suomi', 'Lappi']
+    years = sorted(df['date'].dt.year.unique())
+
+    all_results = []
+
+    for zone in zones:
+        print(f"\n{'-' * 70}")
+        print(f"  {zone}")
+        print(f"{'-' * 70}")
+
+        for year in years:
+            result = analyze_autumn_first_snow(df, zone, year)
+
+            if result:
+                all_results.append(result)
+
+                first_snow_str = result['first_snow_date'].strftime('%d.%m.%Y')
+
+                print(f"\n  Syksy {year}:")
+                print(f"    Ensilumi:                    {first_snow_str}")
+                print(f"    Lumensyvyys:                 {result['first_snow_depth']:.1f} cm")
+                print(f"    Lumipäiviä yhteensä:         {result['snow_days_total']}")
+                print(f"    Maksimilumi:                 {result['max_snow_depth']:.1f} cm")
+
+    # Tallenna JSON
+    if all_results:
+        json_data = []
+        for r in all_results:
+            json_entry = {
+                'zone': r['zone'],
+                'year': r['year'],
+                'first_snow_date': r['first_snow_date'].strftime('%Y-%m-%d'),
+                'first_snow_depth': r['first_snow_depth'],
+                'snow_days_total': r['snow_days_total'],
+                'max_snow_depth': r['max_snow_depth']
+            }
+            json_data.append(json_entry)
+
+        output_json = VIZ_DATA / 'first_snow.json'
+        with open(output_json, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, ensure_ascii=False, indent=2)
+        print(f"\n[OK] JSON tallennettu: {output_json}")
+
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
@@ -941,6 +1060,7 @@ def main():
     run_winter_analysis(df)
     run_slippery_risk_analysis(df)
     run_weather_anomalies_analysis(df)
+    run_first_snow_analysis(df)
 
     print("\n" + "=" * 70)
     print("KAIKKI ANALYYSIT VALMIIT")
