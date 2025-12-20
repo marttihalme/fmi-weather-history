@@ -17,9 +17,10 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 DATA_RAW = PROJECT_ROOT / "data" / "raw"
 
 # Vyöhykemäärittelyt (leveysasteen mukaan)
+# Etelä-Suomen pohjoinen raja 62.0° (Juupajoen korkeudella)
 ZONES = {
-    "etela_suomi": {"name": "Etelä-Suomi", "lat_min": 0, "lat_max": 61.5},
-    "keski_suomi": {"name": "Keski-Suomi", "lat_min": 61.5, "lat_max": 64.0},
+    "etela_suomi": {"name": "Etelä-Suomi", "lat_min": 0, "lat_max": 62.0},
+    "keski_suomi": {"name": "Keski-Suomi", "lat_min": 62.0, "lat_max": 64.0},
     "pohjois_suomi": {"name": "Pohjois-Suomi", "lat_min": 64.0, "lat_max": 66.0},
     "lappi": {"name": "Lappi", "lat_min": 66.0, "lat_max": 90.0}
 }

@@ -1246,6 +1246,34 @@
   vertical-align: middle;
 }
 
+.snow-marker-icon {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  background: #90caf9;
+  border: none;
+  vertical-align: middle;
+  position: relative;
+}
+
+.snow-marker-icon::before,
+.snow-marker-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: 3px;
+  background: #90caf9;
+}
+
+.snow-marker-icon::before {
+  top: -4px;
+}
+
+.snow-marker-icon::after {
+  bottom: -4px;
+}
+
 /* ===================================
    Phenomenon Card Styles (Active Anomalies List)
    =================================== */
