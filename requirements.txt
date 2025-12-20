@@ -1,2 +1,4 @@
 fmiopendata
 pandas
+beautifulsoup4
+requests

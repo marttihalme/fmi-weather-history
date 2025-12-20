@@ -58,6 +58,48 @@ const UIControls = {
     this.attachRefresh30Button();
     this.initializeRouter();
     this.checkBackendAvailability();
+    this.initializeSidebarResize();
+  },
+
+  /**
+   * Initialize sidebar resize functionality
+   */
+  initializeSidebarResize() {
+    const handle = document.getElementById('legend-resize-handle');
+    const sidebar = document.getElementById('legend-sidebar');
+
+    if (!handle || !sidebar) return;
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    handle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = sidebar.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      const diff = e.clientX - startX;
+      const newWidth = Math.min(500, Math.max(180, startWidth + diff));
+      sidebar.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        handle.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
   },
 
   /**

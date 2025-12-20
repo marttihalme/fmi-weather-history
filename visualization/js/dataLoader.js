@@ -15,6 +15,7 @@ const DataLoader = {
     firstFrost: null, // First frost data
     firstSnow: null, // First snow data (ensilumi)
     precomputedGrids: null, // Pre-computed IDW grids
+    fmiForecasts: null, // FMI long-term forecasts
   },
 
   /**
@@ -43,6 +44,7 @@ const DataLoader = {
     firstFrost: false,
     firstSnow: false,
     precomputedGrids: false,
+    fmiForecasts: false,
   },
 
   // Loaded flags
@@ -56,6 +58,7 @@ const DataLoader = {
     firstFrost: false,
     firstSnow: false,
     precomputedGrids: false,
+    fmiForecasts: false,
   },
 
   /**
@@ -103,6 +106,11 @@ const DataLoader = {
           "Could not load precomputed grids (will use real-time interpolation):",
           err.message
         );
+      });
+
+      // Load FMI forecasts in background (not blocking)
+      this.loadFmiForecasts().catch((err) => {
+        console.warn("Could not load FMI forecasts:", err.message);
       });
 
       return {
@@ -314,6 +322,165 @@ const DataLoader = {
     } finally {
       this.loading.precomputedGrids = false;
     }
+  },
+
+  /**
+   * Load FMI long-term forecasts
+   * @returns {Promise<Object>} Forecast data with history
+   */
+  async loadFmiForecasts() {
+    if (this.loaded.fmiForecasts) return this.data.fmiForecasts;
+
+    this.loading.fmiForecasts = true;
+
+    try {
+      const data = await this.fetchJSON("data/fmi_forecasts.json");
+      this.data.fmiForecasts = data;
+      this.loaded.fmiForecasts = true;
+      console.log("FMI forecasts loaded:", data.forecasts?.length || 0, "entries");
+
+      // Update UI with forecast data
+      this.renderForecastUI(data);
+
+      return data;
+    } catch (error) {
+      console.warn("FMI forecasts not available:", error.message);
+      this.data.fmiForecasts = null;
+      this.loaded.fmiForecasts = true;
+
+      // Show error in UI
+      const metaEl = document.getElementById("forecast-meta");
+      if (metaEl) {
+        metaEl.innerHTML = '<span class="forecast-error">Ennusteita ei saatavilla</span>';
+      }
+
+      return null;
+    } finally {
+      this.loading.fmiForecasts = false;
+    }
+  },
+
+  /**
+   * Render FMI forecast data in the sidebar
+   * @param {Object} data - Forecast data object
+   */
+  renderForecastUI(data) {
+    if (!data || !data.forecasts || data.forecasts.length === 0) {
+      const metaEl = document.getElementById("forecast-meta");
+      if (metaEl) {
+        metaEl.innerHTML = '<span class="forecast-error">Ei ennustedataa</span>';
+      }
+      return;
+    }
+
+    const latest = data.forecasts[0];
+    const metaEl = document.getElementById("forecast-meta");
+    const contentEl = document.getElementById("forecast-content");
+
+    // Format fetched date
+    const fetchedDate = new Date(data.last_updated);
+    const fetchedStr = fetchedDate.toLocaleDateString("fi-FI", {
+      day: "numeric",
+      month: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Page modified date (from FMI)
+    const pageModified = latest.page_modified || "";
+
+    // Update meta info - published date under header
+    if (metaEl) {
+      metaEl.innerHTML = pageModified ? `<span class="forecast-published">Julkaistu: ${pageModified}</span>` : "";
+    }
+
+    // Add footer with fetched time and source at bottom
+    const forecastSection = document.getElementById("forecast-section");
+    let footerEl = document.getElementById("forecast-footer");
+    if (!footerEl && forecastSection) {
+      footerEl = document.createElement("div");
+      footerEl.id = "forecast-footer";
+      footerEl.className = "forecast-meta forecast-footer";
+      forecastSection.appendChild(footerEl);
+    }
+    if (footerEl) {
+      footerEl.innerHTML = `
+        <span class="forecast-fetched">Haettu: ${fetchedStr}</span>
+        <span class="forecast-source">Lähde: <a href="https://www.ilmatieteenlaitos.fi/pitkan-ennusteen-seuranta" target="_blank" rel="noopener">Ilmatieteenlaitos</a></span>
+      `;
+    }
+
+    // Render forecast boxes
+    if (contentEl) {
+      let html = "";
+
+      // Monthly forecast
+      if (latest.monthly) {
+        html += this.renderForecastBox(latest.monthly, "monthly", "Kuukausiennuste");
+      }
+
+      // Seasonal forecast
+      if (latest.seasonal) {
+        html += this.renderForecastBox(latest.seasonal, "seasonal", "Vuodenaikaennuste");
+      }
+
+      contentEl.innerHTML = html;
+
+      // Add toggle event listeners
+      contentEl.querySelectorAll(".forecast-toggle").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const box = e.target.closest(".forecast-box");
+          box.classList.toggle("forecast-collapsed");
+          e.target.textContent = box.classList.contains("forecast-collapsed")
+            ? "Näytä lisää"
+            : "Näytä vähemmän";
+        });
+      });
+    }
+  },
+
+  /**
+   * Render a single forecast box
+   * @param {Object} forecast - Forecast object (monthly or seasonal)
+   * @param {string} type - "monthly" or "seasonal"
+   * @param {string} label - Display label
+   * @returns {string} HTML string
+   */
+  renderForecastBox(forecast, type, label) {
+    const period = forecast.period_text || "";
+
+    // Use raw_html if available, otherwise text_content
+    let content = forecast.raw_html || forecast.text_content || "";
+
+    // If we have raw HTML, it's already formatted
+    // If it's plain text, convert newlines to paragraphs
+    if (!forecast.raw_html && forecast.text_content) {
+      content = forecast.text_content
+        .split("\n")
+        .filter((line) => line.trim())
+        .map((line) => `<p>${line}</p>`)
+        .join("");
+    }
+
+    return `
+      <div class="forecast-box ${type} forecast-collapsed">
+        <div class="forecast-box-header">
+          <span class="forecast-box-title">${label}</span>
+        </div>
+        ${period ? `<div class="forecast-box-period">${period}</div>` : ""}
+        <div class="forecast-box-content">${content}</div>
+        <button class="forecast-toggle">Näytä lisää</button>
+      </div>
+    `;
+  },
+
+  /**
+   * Get current FMI forecasts
+   * @returns {Object|null} Latest forecast data
+   */
+  getFmiForecasts() {
+    return this.data.fmiForecasts;
   },
 
   /**

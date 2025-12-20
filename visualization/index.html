@@ -76,6 +76,7 @@
         <div id="main-content">
           <!-- Legend Sidebar -->
           <aside id="legend-sidebar">
+            <div class="sidebar-resize-handle" id="legend-resize-handle"></div>
             <div id="legend-content">
               <h3>Selite</h3>
 
@@ -98,6 +99,17 @@
                 <h4>Valittu päivä</h4>
                 <div id="current-date-display">Ladataan...</div>
                 <div id="current-stats">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- Long-term Forecasts -->
+              <div class="legend-section" id="forecast-section">
+                <h4>Pitkän ajan ennusteet</h4>
+                <div id="forecast-meta" class="forecast-meta">
+                  <span class="forecast-loading">Ladataan...</span>
+                </div>
+                <div id="forecast-content">
                   <!-- Populated dynamically -->
                 </div>
               </div>
