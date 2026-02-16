@@ -134,6 +134,61 @@ fmi-weather-history/
 - **snow_depth** - Snow depth (cm)
 - **precipitation** - Precipitation amount (mm)
 
+## Data Architecture
+
+### How data flows in production
+
+1. **Repo contains** `data/raw/weather_data_2022_2025_all.csv` (~76 MB) — the master dataset
+2. **Daily CI job** (`update-data.yml`) fetches the last 30 days from FMI, merges into the CSV, runs preprocessing, gzips JSON files, and deploys to GitHub Pages
+3. **Frontend** reads only `visualization/data/*.json.gz` files — never the raw CSV
+
+The CSV grows by ~250 rows per day. The 30-day sliding window ensures no gaps as long as CI runs at least once per month.
+
+### Expanding historical data range
+
+To add older data (e.g., extending from 2018 back to 2015):
+
+```bash
+# 1. Activate virtual environment
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/Mac
+
+# 2. Fetch historical data from FMI and merge into existing CSV
+python scripts/fetch_historical_data.py --start 2015-01-01 --end 2017-12-31 --merge
+
+# Note: fetch_historical_data.py writes to weather_data_all.csv by default.
+# The fetched data needs to be merged into weather_data_2022_2025_all.csv
+# which is the file tracked in git and used by CI.
+# Use a simple Python script to merge:
+python -c "
+import pandas as pd
+all_df = pd.read_csv('data/raw/weather_data_all.csv')
+ci_df = pd.read_csv('data/raw/weather_data_2022_2025_all.csv')
+historical = all_df[(all_df['date'] >= '2015-01-01') & (all_df['date'] < '2018-01-01')]
+combined = pd.concat([historical, ci_df], ignore_index=True)
+combined.drop_duplicates(subset=['date', 'fmisid'], keep='last', inplace=True)
+combined.sort_values(by=['date', 'station_name'], inplace=True)
+combined.to_csv('data/raw/weather_data_2022_2025_all.csv', index=False)
+print(f'Done: {len(combined)} rows, {combined.date.min()} - {combined.date.max()}')
+"
+
+# 3. Run preprocessing (also runs analyze_data.py automatically)
+python visualization/preprocessing/prepare_data.py
+
+# 4. Gzip JSON files for web
+cd visualization/data
+rm -f *.gz
+for file in *.json; do gzip -9 -k "$file"; done
+
+# 5. Commit and push
+cd ../..
+git add data/raw/weather_data_2022_2025_all.csv visualization/data/*.gz
+git commit -m "Add historical data from 2015-01-01"
+git push
+```
+
+FMI API fetches data in quarterly chunks with 2s delay between requests. Fetching 4 years takes about 3-5 minutes.
+
 ## Manual Data Operations
 
 ### Fetch Data for Date Range
