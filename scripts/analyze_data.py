@@ -336,9 +336,25 @@ def analyze_winter_season(daily_avg, year, is_current_season=False):
         return None
 
     season_start = significant_spells[0]['start']
-    # Käynnissä olevalle kaudelle ei aseteta päättymispäivää
     last_spell_end = significant_spells[-1]['end']
-    season_end = None if is_current_season else last_spell_end
+
+    if is_current_season:
+        # Tarkista onko talvi päättynyt: riittävästi lämpimiä päiviä viimeisen pakkasjakson jälkeen
+        after_last_cold = daily_avg[daily_avg.index > last_spell_end]
+        winter_ended = False
+        if len(after_last_cold) >= WINTER_CONSECUTIVE_DAYS:
+            warm_streak = 0
+            for temp in after_last_cold.values:
+                if not pd.isna(temp) and temp >= WINTER_THRESHOLD_TEMP:
+                    warm_streak += 1
+                    if warm_streak >= WINTER_CONSECUTIVE_DAYS:
+                        winter_ended = True
+                        break
+                else:
+                    warm_streak = 0
+        season_end = last_spell_end if winter_ended else None
+    else:
+        season_end = last_spell_end
 
     # Käytä viimeisen pakkasjakson loppua tilastojen laskentaan
     season_mask = (daily_avg.index >= season_start) & (daily_avg.index <= last_spell_end)
